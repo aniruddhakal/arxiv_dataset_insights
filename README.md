@@ -4,12 +4,14 @@
 
 
 ### All Steps
+- [[In Progress] Research Steps](ResearchSteps.md)
 - [Initialize Dataset (MongoDB)](#steps-to-initialize-dataset)
 - [EDA and Creating Train, Validation, Test splits](#eda-and-creating-train-validation-test-splits)
 - ###### [Currently under progress > Hyperparameter Tuning](#hyperparameter-tuning)
 - [TODO Viewing Finetuning Results with Optuna Dashboard](#viewing-finetuning-results-with-optuna-dashboard)
-- [Comprehensive Documentation]()
-- [Model Choice Decisions](#model-choice-decisions)
+- [TODO Inference App / Endpoint](#inference-app--endpoint)
+- [TODO Model Choice Decisions](#model-choice-decisions)
+- [TODO Comprehensive Documentation]()
 
 
 ### Description

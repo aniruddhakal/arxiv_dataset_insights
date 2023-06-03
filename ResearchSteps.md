@@ -50,7 +50,9 @@ corpus, therefore, there might not be any need for us to handle OOV words explic
 #### - Model choice steps
     - Filter bert models for "Feature Extraction" category
     - Model size
+    - Inference time
     - Number of attention heads
+    - Arhcitecture (e.g. SBERT)
     - Specific downstream tasks / datasets trained / finetuned on
     - Domain specific models suitable for arxiv dataset feature extraction
     - Model's documentation - model card, performance, intended use, limitations or considerations
