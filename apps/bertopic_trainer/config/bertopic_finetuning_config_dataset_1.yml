@@ -1,0 +1,29 @@
+logging_dir: "../logs"
+logfile_name: "bertopic_trainer_logs.txt"
+logging_level: "DEBUG"
+
+dataset_path: "../../../dataset"
+
+model_name: "distilbert-base-nli-mean-tokens"
+batch_size: 384
+dataset_index: 1
+
+hyperparameters:
+  nr_topics: 30
+  top_n_words: 100
+  min_topic_size: 10
+  n_gram_range: (1, 1)
+  
+  # TODO inputs for hyperparameters
+  min_categories: 5
+  max_categories: 5
+  
+  # count vectorizer params
+  max_features: 100
+  max_df: 0.8
+  min_df: 0.05
+  lowercase: true
+  #  stop_words: STOPWORDS
+  
+  # metrics params
+  topk: 10

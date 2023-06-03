@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  mongodb:
+    build:
+      context: apps
+      dockerfile: mongo5.dockerfile
+    network_mode: host
+    volumes:
+      - ./dataset/data:/data/db
+
+  init_database:
+    depends_on: [mongodb]
+    build:
+      context: apps
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: init_database
+    command: ['python', 'src/init_database.py']
+    volumes:
+      - ./dataset:/dataset
+    network_mode: host
+
+  app:
+    depends_on: [mongodb]
+    build:
+      context: apps
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: app
+    network_mode: host
+
+  notebooks:
+    depends_on: [mongodb]
+    build:
+      context: apps
+      dockerfile: Dockerfile_ubuntu
+      args:
+        APP_NAME: notebooks
+    command: jupyter notebook --NotebookApp.token='' --allow-root --no-browser
+    network_mode: host
+    volumes:
+      - ./dataset:/dataset
+      - ./apps/notebooks/src:/app/notebooks/src
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-uvm:/dev/nvidia-uvm

@@ -1,0 +1,12 @@
+jupyter
+pandas
+scikit-learn
+plotly
+matplotlib
+pymongo
+pydantic
+torch
+octis==1.12.1
+bertopic
+sentence-transformers
+gensim

@@ -1,0 +1,15 @@
+FROM ubuntu:20.04
+ENV TZ=Europe/Dublin
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+LABEL authors="ani"
+
+ARG APP_NAME
+
+RUN mkdir /app
+COPY ./${APP_NAME} /app/${APP_NAME}
+
+RUN apt-get update -y
+RUN apt-get install python3.9-full python3-pip -y
+
+WORKDIR /app/$APP_NAME
+RUN python3.9 -m pip install -r requirements.txt
