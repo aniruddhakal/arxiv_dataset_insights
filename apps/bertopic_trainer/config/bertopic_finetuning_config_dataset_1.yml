@@ -2,7 +2,7 @@ logging_dir: "../logs"
 logfile_name: "bertopic_trainer_logs.txt"
 logging_level: "DEBUG"
 
-dataset_path: "../../../dataset"
+dataset_path: "../../dataset"
 
 model_name: "distilbert-base-nli-mean-tokens"
 batch_size: 384

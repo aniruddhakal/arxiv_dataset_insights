@@ -2,3 +2,5 @@ apps/dataset
 **/.idea
 **/nohup.out
 dataset
+**/logs/
+*.txt
