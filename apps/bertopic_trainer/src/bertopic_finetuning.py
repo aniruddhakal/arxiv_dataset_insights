@@ -1,5 +1,11 @@
 import yaml
+from cuml import UMAP
+from cuml.cluster.hdbscan import HDBSCAN
+from optuna.trial import Trial
 from util import *
+from uuid import uuid4
+import optuna
+import re
 import logging
 from pathlib import Path
 import argparse
@@ -10,6 +16,7 @@ from pathlib import Path
 from datasets import load_dataset
 from sentence_transformers import SentenceTransformer
 from logging import Logger, StreamHandler
+from cuml import HDBSCAN
 
 from bertopic import BERTopic
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
@@ -21,16 +28,17 @@ from hyperparameters import BertopicHyperparameters
 class BERTopicTrainer:
     def __init__(self, config: dict, logger: Logger, ):
         self.config = config
-        self.hyperparameters = BertopicHyperparameters(config=config, logger=logger)
+        self.study_name = config['study_name']
 
         self.dataset_path = Path(self.config['dataset_path'])
+        self.models_path = Path(self.config['models_path'])
         self.cache_dir = self.dataset_path / "cache_dir"
         self.logger = logger
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.models_path.mkdir(parents=True, exist_ok=True)
 
         self.dataset_index = config.get("dataset_index", 1)
-        self.model_name = config.get("model_name", "distilbert-base-nli-mean-tokens")
         self.batch_size = config.get("batch_size", 384)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,9 +50,7 @@ class BERTopicTrainer:
         self.best_score = 1_000_000
         self.best_validation_score = 1_000_000
 
-        # TODO test following
-        #   - distilbert-base-nli-mean-tokens
-        #   - 'sentence-transformers/all-mpnet-base-v2'
+        self.hyperparameters = BertopicHyperparameters()
 
         # TODO should go away once optuna is integrated
         self.scores = {
@@ -61,7 +67,8 @@ class BERTopicTrainer:
         if not (embeddings is not None and embeddings.shape[0] == len(sentences)):
             generating_fresh = True
 
-            sentence_transformer = SentenceTransformer(model_name_or_path=self.model_name, device=self.device)
+            sentence_transformer = SentenceTransformer(model_name_or_path=self.hyperparameters.model_name,
+                                                       device=self.device)
 
             embeddings = sentence_transformer.encode(sentences=sentences,
                                                      batch_size=self.batch_size,
@@ -73,6 +80,9 @@ class BERTopicTrainer:
             self.save_embeddings(split_name, embeddings=embeddings)
 
         return embeddings
+
+    def set_hyperparameters(self, trial: Trial):
+        self.hyperparameters = BertopicHyperparameters(config=self.config, trial=trial, logger=logger)
 
     def save_embeddings(self, split_name: str, embeddings: np.ndarray):
         embeddings_filename = self.get_embeddings_filename(split_name)
@@ -93,7 +103,7 @@ class BERTopicTrainer:
     def get_embeddings_filename(self, split_name):
         return str(
             self.dataset_path /
-            f"split-{split_name}_dataset-{self.dataset_index}_model-{self.model_name}_embeddings.npy"
+            f"split-{split_name}_dataset-{self.dataset_index}_model-{self.hyperparameters.model_normalized_name}_embeddings.npy"
         )
 
     def load_datasets(self, dataset_index: int, load_train: bool = True, load_validation: bool = True,
@@ -121,29 +131,47 @@ class BERTopicTrainer:
 
         return datasets
 
-    def init_model(self, num_categories: int):
+    def init_model(self):
         hp = self.hyperparameters
-        # TODO call suggest_hyperparameters() method, pass optuna trial as input
         count_vectorizer = CountVectorizer(
             max_features=hp.max_features, max_df=hp.max_df, min_df=hp.min_df,
             ngram_range=hp.n_gram_range, lowercase=hp.lowercase,
             stop_words=list(hp.stop_words)
             if not isinstance(hp.stop_words, list)
-            else hp.stop_words
+            else hp.stop_words,
         )
+
+        umap_model = UMAP(
+            n_neighbors=hp.n_neighbors, n_components=hp.n_components, metric=hp.umap_metric, n_epochs=hp.n_epochs, learning_rate=hp.learning_rate, min_dist=hp.min_dist,
+            random_state=hp.random_state
+        )
+
+        hdbscan_model = HDBSCAN(min_cluster_size=hp.min_cluster_size,
+                                cluster_selection_epsilon=hp.cluster_selection_epsilon, metric=hp.hdbscan_metric,
+                                cluster_selection_method=hp.cluster_selection_method)
 
         # Create BERTopic with current number of categories
         model = BERTopic(
-            nr_topics=num_categories,
+            nr_topics=hp.nr_topics,
+            n_gram_range=hp.n_gram_range,
             vectorizer_model=count_vectorizer,
-            n_gram_range=hp.n_gram_range
+            umap_model=umap_model,
+            hdbscan_model=hdbscan_model
         )
 
         return model
 
-    def train(self):
-        # TODO implement
-        raise NotImplementedError()
+    def _get_finetuning_study_name(self):
+        study_name = self.models_path / self.study_name / f"finetuning_study.sql"
+        study_name.parent.mkdir(parents=True, exist_ok=True)
+        return str(study_name)
+
+    def objective(self, trial: Trial):
+        self.set_hyperparameters(trial=trial)
+        train_score, validation_score = self.finetune()
+        trial.report(validation_score, step=1)
+
+        return validation_score
 
     def test(self):
         # test
@@ -163,39 +191,56 @@ class BERTopicTrainer:
         sentences_train = self.datasets['train']['abstract'][:]
         sentences_validation = self.datasets['validation']['abstract'][:]
 
-        # TODO init and start optuna study
-        for num_categories in range(hp.min_categories, hp.max_categories + 1):
-            # TODO log optuna study trial start
-            self.logger.debug(f"Processing num_categories = {num_categories}")
-            try:
-                model = self.init_model(num_categories)
+        self.logger.debug(f"Processing num_categories = {hp.nr_topics}")
+        try:
+            model = self.init_model()
 
-                # fit to model
-                topics, _ = model.fit_transform(documents=sentences_train, embeddings=train_embeddings)
-                coherence_score_train = self.calculate_coherence_score(model=model, sentences=sentences_train)
+            # fit to model
+            topics, _ = model.fit_transform(documents=sentences_train, embeddings=train_embeddings)
+            coherence_score_train = self.calculate_coherence_score(model=model, sentences=sentences_train)
 
-                # validate
-                topics, _ = model.transform(documents=sentences_validation, embeddings=validation_embeddings)
-                coherence_score_validation = self.calculate_coherence_score(model=model, sentences=sentences_validation)
+            # validate
+            topics, _ = model.transform(documents=sentences_validation, embeddings=validation_embeddings)
+            coherence_score_validation = self.calculate_coherence_score(model=model, sentences=sentences_validation)
 
-                # TODO log train and validation scores to optuna study
-                #   figure out appropriate ways to log train, test, and validation scores to optuna
-                self.append_score(metric_name='coherence', score=coherence_score_train)
-                self.append_score(metric_name='coherence', score=coherence_score_validation)
+            self.append_score(metric_name='coherence', score=coherence_score_train)
+            self.append_score(metric_name='coherence', score=coherence_score_validation)
 
-                self.replace_best_model(model, train_score=coherence_score_train,
-                                        validation_score=coherence_score_validation)
+            self.replace_best_model(model, train_score=coherence_score_train,
+                                    validation_score=coherence_score_validation)
 
-                # TODO optuna trial finish update
-            except Exception as e:
-                # TODO optuna trial fail update
-                raise Exception(f"Trial for num_categories {num_categories} failed with errror - {e}")
+            return coherence_score_train, coherence_score_validation
+
+        except Exception as e:
+            raise Exception(f"Trial for num_categories {hp.nr_topics} failed with errror - {e}")
 
     def replace_best_model(self, model, train_score, validation_score):
         if train_score < self.best_score and validation_score < self.best_validation_score:
             self.best_model = model
             self.best_score = train_score
             self.best_validation_score = validation_score
+
+    def save_model(self, model: BERTopic):
+        study_name = self._get_finetuning_study_name()
+        model_name = f"{str(Path(study_name).parent)}/model.bin"
+        self.logger.debug(f"Saved model at {model_name}")
+        model.save(model_name)
+        self.logger.info(f"Saved model at {model_name}")
+
+    def main(self):
+        study_name = self._get_finetuning_study_name()
+        optuna_study = optuna.create_study(direction='minimize', study_name=study_name, load_if_exists=True)
+        optuna_study.optimize(self.objective, n_trials=self.config.get('n_trials', 5))
+
+        self.logger.info(f"Best Trial - {optuna_study.best_trial}")
+        self.logger.info(f"Best Value - {optuna_study.best_value}")
+        self.logger.info(f"Best Params - {optuna_study.best_params}")
+
+        if self.best_model is not None:
+            self.logger.info(f"Saving best model")
+            self.save_model(model=self.best_model)
+        else:
+            self.logger.warning(f"No best model was set, nothing to save")
 
     def calculate_coherence_score(self, model, sentences: List[str]):
         # --------------------------------

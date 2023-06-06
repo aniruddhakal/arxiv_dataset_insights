@@ -1,3 +1,0 @@
-2023-06-03 03:57:24,343 - INFO - util.py line: 42 - Logger initialized, Refer Logfile: /mnt/NVMe/workspace/github_projects/arxiv_dataset_insights/apps/bertopic_trainer/src/logs/bertopic_trainer_logs.txt-362023-35724.txt, LogLevel: 10
-2023-06-03 03:57:58,257 - DEBUG - hyperparameters.py line: 11 - Preparing hyperparameters
-2023-06-03 03:58:11,151 - DEBUG - hyperparameters.py line: 32 - Finished preparing hyperparameters

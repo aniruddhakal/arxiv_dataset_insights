@@ -71,3 +71,10 @@ corpus, therefore, there might not be any need for us to handle OOV words explic
     - please use TensorFlow or Keras based.
 
 ### Data visualization to communicate your analysis
+
+### Issues faced
+- Installation related issues
+- Issue with mounting GPU to docker container [unresolved]
+- Issues with extracting Embeddings for Clustering, the model, size, and time limit considerations, computations limits on local machine
+- Issues while installing cuML library
+- Issues faced while trying evaluation metrics from OCTIS

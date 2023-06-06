@@ -2,5 +2,8 @@ apps/dataset
 **/.idea
 **/nohup.out
 dataset
-**/logs/
-*.txt
+**/logs/*.txt
+**/*_logs.txt
+*.pyc
+**/*.ipynb_checkpoints
+**/*.fuse_hidden*
