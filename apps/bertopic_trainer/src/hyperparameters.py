@@ -1,7 +1,7 @@
-from gensim.parsing.preprocessing import STOPWORDS
-from optuna.trial import Trial
-from logging import Logger
 import re
+from logging import Logger
+
+from optuna.trial import Trial
 
 
 class BertopicHyperparameters:
@@ -9,13 +9,13 @@ class BertopicHyperparameters:
         self.logger = logger
         self.config = config
         self.hyperparameters_config = self.config['hyperparameters']
+        self.process_hyperparameters()
 
         self.logger.debug(f"Preparing hyperparameters")
 
         # hyperparameters
         self.model_name = trial.suggest_categorical(name='model_name',
                                                     choices=self.hyperparameters_config['model_name'])
-        self.model_normalized_name = re.sub("/", "_", self.model_name)
 
         self.nr_topics = int(
             trial.suggest_categorical(name='nr_topics', choices=self.hyperparameters_config.get('nr_topics', 30)))
@@ -24,17 +24,12 @@ class BertopicHyperparameters:
         self.min_topic_size = int(trial.suggest_categorical(name='min_topic_size',
                                                             choices=self.hyperparameters_config.get('min_topic_size',
                                                                                                     10)))
-        self.n_gram_range = eval(
-            trial.suggest_categorical(name='n_gram_range',
-                                      choices=self.hyperparameters_config.get('n_gram_range', '(1,1)')))
-
-        # TODO inputs for hyperparameters
-        self.min_categories = int(trial.suggest_categorical(name='min_categories',
-                                                            choices=self.hyperparameters_config.get('min_categories',
-                                                                                                    5)))
-        self.max_categories = int(trial.suggest_categorical(name='max_categories',
-                                                            choices=self.hyperparameters_config.get('max_categories',
-                                                                                                    50)))
+        self.n_gram_range = trial.suggest_categorical(name='n_gram_range',
+                                      choices=self.hyperparameters_config.get('n_gram_range', (1, 1)))
+        if isinstance(self.n_gram_range, str):
+            self.n_gram_range = eval(tuple(self.n_gram_range))
+        elif isinstance(self.n_gram_range, list):
+            self.n_gram_range = tuple(self.n_gram_range)
 
         # count vectorizer params
         self.max_features = int(trial.suggest_categorical(name='max_features',
@@ -44,10 +39,7 @@ class BertopicHyperparameters:
         self.min_df = float(trial.suggest_categorical(name='min_df',
                                                       choices=self.hyperparameters_config.get('min_df', 0.05)))
         self.lowercase = trial.suggest_categorical(name='lowercase',
-                                                        choices=self.hyperparameters_config.get('lowercase', True))
-        self.stop_words = trial.suggest_categorical(name='stop_words',
-                                                    choices=self.hyperparameters_config.get('stop_words',
-                                                                                            list(STOPWORDS)))
+                                                   choices=self.hyperparameters_config.get('lowercase', True))
 
         # umap params
         self.n_neighbors = int(
@@ -55,7 +47,8 @@ class BertopicHyperparameters:
         self.n_components = int(
             trial.suggest_categorical(name='n_components', choices=self.hyperparameters_config.get('n_components', 50)))
         self.umap_metric = trial.suggest_categorical(name='umap_metric',
-                                                choices=self.hyperparameters_config.get('umap_metric', 'euclidean'))
+                                                     choices=self.hyperparameters_config.get('umap_metric',
+                                                                                             'euclidean'))
         self.n_epochs = int(
             trial.suggest_categorical(name='n_epochs', choices=self.hyperparameters_config.get('n_epochs', 200)))
         self.learning_rate = int(
@@ -85,3 +78,13 @@ class BertopicHyperparameters:
                                                   choices=self.hyperparameters_config.get('topk', 10)))
 
         self.logger.debug(f"Finished preparing hyperparameters")
+
+    @property
+    def model_normalized_name(self):
+        model_normalized_name = re.sub("/", "_", self.model_name)
+        return model_normalized_name
+
+    def process_hyperparameters(self):
+        n_gram_range_list = self.hyperparameters_config['n_gram_range']
+        n_gram_range_list = [tuple(x) for x in n_gram_range_list]
+        self.hyperparameters_config['n_gram_range'] = n_gram_range_list

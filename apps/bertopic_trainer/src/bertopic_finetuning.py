@@ -1,32 +1,25 @@
-import yaml
-from cuml import UMAP
-from cuml.cluster.hdbscan import HDBSCAN
-from optuna.trial import Trial
-from util import *
-from uuid import uuid4
-import optuna
-import re
-import logging
-from pathlib import Path
-import argparse
-import numpy as np
+from logging import Logger
 from typing import List
-import torch
-from pathlib import Path
-from datasets import load_dataset
-from sentence_transformers import SentenceTransformer
-from logging import Logger, StreamHandler
-from cuml import HDBSCAN
 
+import numpy as np
+import optuna
+import torch
 from bertopic import BERTopic
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from gensim.models.coherencemodel import CoherenceModel
+from cuml import HDBSCAN, UMAP
+from datasets import load_dataset
 from gensim.corpora import Dictionary
+from gensim.models.coherencemodel import CoherenceModel
+from optuna.trial import Trial
+from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+from gensim.parsing.preprocessing import STOPWORDS
+
 from hyperparameters import BertopicHyperparameters
+from util import *
 
 
 class BERTopicTrainer:
-    def __init__(self, config: dict, logger: Logger, ):
+    def __init__(self, config: dict, logger: Logger):
         self.config = config
         self.study_name = config['study_name']
 
@@ -50,7 +43,7 @@ class BERTopicTrainer:
         self.best_score = 1_000_000
         self.best_validation_score = 1_000_000
 
-        self.hyperparameters = BertopicHyperparameters()
+        self.hyperparameters = None
 
         # TODO should go away once optuna is integrated
         self.scores = {
@@ -59,12 +52,14 @@ class BERTopicTrainer:
         }
 
     def extract_or_load_embeddings(self, split_name: str):
+        self.logger.debug(f"Loading embeddings for split {split_name}")
         embeddings = self.load_embeddings(split_name)
         sentences = self.datasets[split_name]['abstract'][:]
 
         generating_fresh = False
 
         if not (embeddings is not None and embeddings.shape[0] == len(sentences)):
+            self.logger.debug(f"Generating fresh embeddings for {len(sentences)} sentences")
             generating_fresh = True
 
             sentence_transformer = SentenceTransformer(model_name_or_path=self.hyperparameters.model_name,
@@ -82,11 +77,12 @@ class BERTopicTrainer:
         return embeddings
 
     def set_hyperparameters(self, trial: Trial):
-        self.hyperparameters = BertopicHyperparameters(config=self.config, trial=trial, logger=logger)
+        self.hyperparameters = BertopicHyperparameters(config=self.config, trial=trial, logger=self.logger)
 
     def save_embeddings(self, split_name: str, embeddings: np.ndarray):
         embeddings_filename = self.get_embeddings_filename(split_name)
         np.save(embeddings_filename, embeddings)
+        self.logger.debug(f"Saved embeddings of shape {embeddings.shape} in file {embeddings_filename}")
 
     def load_embeddings(self, split_name: str):
         embeddings_filename = self.get_embeddings_filename(split_name)
@@ -132,23 +128,24 @@ class BERTopicTrainer:
         return datasets
 
     def init_model(self):
+        self.logger.debug(f"Initializing model")
         hp = self.hyperparameters
         count_vectorizer = CountVectorizer(
             max_features=hp.max_features, max_df=hp.max_df, min_df=hp.min_df,
             ngram_range=hp.n_gram_range, lowercase=hp.lowercase,
-            stop_words=list(hp.stop_words)
-            if not isinstance(hp.stop_words, list)
-            else hp.stop_words,
+            stop_words=list(STOPWORDS),
         )
 
         umap_model = UMAP(
-            n_neighbors=hp.n_neighbors, n_components=hp.n_components, metric=hp.umap_metric, n_epochs=hp.n_epochs, learning_rate=hp.learning_rate, min_dist=hp.min_dist,
+            n_neighbors=hp.n_neighbors, n_components=hp.n_components, metric=hp.umap_metric, n_epochs=hp.n_epochs,
+            learning_rate=hp.learning_rate, min_dist=hp.min_dist,
             random_state=hp.random_state
         )
 
         hdbscan_model = HDBSCAN(min_cluster_size=hp.min_cluster_size,
                                 cluster_selection_epsilon=hp.cluster_selection_epsilon, metric=hp.hdbscan_metric,
-                                cluster_selection_method=hp.cluster_selection_method)
+                                cluster_selection_method=hp.cluster_selection_method,
+                                prediction_data=True)
 
         # Create BERTopic with current number of categories
         model = BERTopic(
@@ -159,12 +156,17 @@ class BERTopicTrainer:
             hdbscan_model=hdbscan_model
         )
 
+        self.logger.debug(f"Model initialized")
         return model
 
-    def _get_finetuning_study_name(self):
-        study_name = self.models_path / self.study_name / f"finetuning_study.sql"
-        study_name.parent.mkdir(parents=True, exist_ok=True)
-        return str(study_name)
+    def _get_finetuning_study_details(self):
+        study_storage = self.models_path / "finetuning_studies" / f"{self.study_name}.sql"
+        study_storage.parent.mkdir(parents=True, exist_ok=True)
+
+        return {
+            "storage": study_storage,
+            "study_name": self.study_name
+        }
 
     def objective(self, trial: Trial):
         self.set_hyperparameters(trial=trial)
@@ -175,7 +177,8 @@ class BERTopicTrainer:
 
     def test(self):
         # test
-        sentences_test = self.datasets['test']['abstract'][:]
+        sentences_test = self.datasets['test']['abstract'][:]  # TODO load test dataset only here, not at the beginning
+        self.logger.debug(f"Testing model performance on test dataset with {len(sentences_test)} samples")
         test_embeddings = self.extract_or_load_embeddings(split_name='test')
         topics, _ = self.best_model.transform(documents=sentences_test, embeddings=test_embeddings)
         coherence_score_test = self.calculate_coherence_score(model=self.best_model, sentences=sentences_test)
@@ -184,11 +187,13 @@ class BERTopicTrainer:
     def finetune(self):
         hp = self.hyperparameters
 
+        self.logger.info(f"Using model {hp.model_name}")
         train_embeddings = self.extract_or_load_embeddings(split_name='train')
         validation_embeddings = self.extract_or_load_embeddings(split_name='validation')
 
         # fetch texts
-        sentences_train = self.datasets['train']['abstract'][:]
+        sentences_train = self.datasets['train']['abstract'][
+                          :]  # TODO is it necessary to load sentences here like this? does it create a separate copy, hence, memory burden?
         sentences_validation = self.datasets['validation']['abstract'][:]
 
         self.logger.debug(f"Processing num_categories = {hp.nr_topics}")
@@ -196,10 +201,13 @@ class BERTopicTrainer:
             model = self.init_model()
 
             # fit to model
+            self.logger.debug(f"Starting training")
             topics, _ = model.fit_transform(documents=sentences_train, embeddings=train_embeddings)
+            self.logger.debug(f"Finished training")
             coherence_score_train = self.calculate_coherence_score(model=model, sentences=sentences_train)
 
             # validate
+            self.logger.debug(f"Running validations")
             topics, _ = model.transform(documents=sentences_validation, embeddings=validation_embeddings)
             coherence_score_validation = self.calculate_coherence_score(model=model, sentences=sentences_validation)
 
@@ -216,20 +224,29 @@ class BERTopicTrainer:
 
     def replace_best_model(self, model, train_score, validation_score):
         if train_score < self.best_score and validation_score < self.best_validation_score:
+            self.logger.info(
+                f"Replacing best model."
+                f" Old validation score: {self.best_validation_score},"
+                f" New validation score: {validation_score}")
+
             self.best_model = model
             self.best_score = train_score
             self.best_validation_score = validation_score
 
-    def save_model(self, model: BERTopic):
-        study_name = self._get_finetuning_study_name()
-        model_name = f"{str(Path(study_name).parent)}/model.bin"
-        self.logger.debug(f"Saved model at {model_name}")
+    def save_model(self, model: BERTopic):  # TODO also save count vectorizer,  umap, and hdbscan models if necessary
+        study_details = self._get_finetuning_study_details()
+        study_name = study_details.pop('study_name')
+        storage = study_details.pop("storage")
+        model_name = f"{str(storage.parent)}/model.bin"
+        self.logger.debug(f"Saving model at {model_name}")
         model.save(model_name)
         self.logger.info(f"Saved model at {model_name}")
 
     def main(self):
-        study_name = self._get_finetuning_study_name()
-        optuna_study = optuna.create_study(direction='minimize', study_name=study_name, load_if_exists=True)
+        study_details = self._get_finetuning_study_details()
+        study_name = study_details.pop('study_name')
+        storage = study_details.pop("storage")
+        optuna_study = optuna.create_study(direction='minimize', storage=f"sqlite:///{str(storage)}", study_name=study_name, load_if_exists=True)
         optuna_study.optimize(self.objective, n_trials=self.config.get('n_trials', 5))
 
         self.logger.info(f"Best Trial - {optuna_study.best_trial}")
@@ -292,5 +309,6 @@ if __name__ == '__main__':
 
     logger = initialize_logger(logfile_name=logfile_name, log_level=config['logging_level'])
     trainer = BERTopicTrainer(config=config, logger=logger)
-    trainer.finetune()
+    trainer.main()
     trainer.test()
+    # TODO add more cluster evaluation metrics - topic diversity, rand index
