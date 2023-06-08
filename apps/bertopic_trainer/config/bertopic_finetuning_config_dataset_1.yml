@@ -3,6 +3,7 @@ logfile_name: "bertopic_trainer_logs.txt"
 logging_level: "DEBUG"
 
 study_name: "distilled_nli_models"
+study_storage_filename: "distilled_model_choice_experiments_dataset5.sql"
 
 dataset_path: "../../dataset"
 models_path: "../../models"
@@ -22,12 +23,9 @@ hyperparameters:
   nr_topics: [5, 15, 25, 45, 75, 95, 135, 160, 190, 200, 210, 215, 300, 400]
   top_n_words: [10, 20, 30, 60, 80, 100]
   min_topic_size: [1, 5, 15, 30, 50, 100]
-#  n_gram_range: [(1, 1), (1,2), (1,3)]
-  n_gram_range: [[1, 1], [1,2], [1,3]]
-  
-#  # TODO inputs for hyperparameters
-#  min_categories: 5
-#  max_categories: 5
+  #  n_gram_range: [(1, 1), (1,2), (1,3)]
+  n_gram_range_start: [ 1 ]
+  n_gram_range_end: [ 1, 2, 3 ]
   
   # count vectorizer params
   max_features: [500, 5000, 10000, 20000, 30000, 60000]

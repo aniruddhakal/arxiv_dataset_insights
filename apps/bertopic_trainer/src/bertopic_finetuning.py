@@ -1,6 +1,7 @@
 from logging import Logger
 from typing import List
 
+import gc
 import numpy as np
 import optuna
 import torch
@@ -22,6 +23,7 @@ class BERTopicTrainer:
     def __init__(self, config: dict, logger: Logger):
         self.config = config
         self.study_name = config['study_name']
+        self.study_storage_name = config['study_storage_filename']
 
         self.dataset_path = Path(self.config['dataset_path'])
         self.models_path = Path(self.config['models_path'])
@@ -130,9 +132,12 @@ class BERTopicTrainer:
     def init_model(self):
         self.logger.debug(f"Initializing model")
         hp = self.hyperparameters
+
+        n_gram_range = (hp.n_gram_range_start, hp.n_gram_range_end)
+
         count_vectorizer = CountVectorizer(
             max_features=hp.max_features, max_df=hp.max_df, min_df=hp.min_df,
-            ngram_range=hp.n_gram_range, lowercase=hp.lowercase,
+            ngram_range=n_gram_range, lowercase=hp.lowercase,
             stop_words=list(STOPWORDS),
         )
 
@@ -150,7 +155,7 @@ class BERTopicTrainer:
         # Create BERTopic with current number of categories
         model = BERTopic(
             nr_topics=hp.nr_topics,
-            n_gram_range=hp.n_gram_range,
+            n_gram_range=n_gram_range,
             vectorizer_model=count_vectorizer,
             umap_model=umap_model,
             hdbscan_model=hdbscan_model
@@ -160,7 +165,11 @@ class BERTopicTrainer:
         return model
 
     def _get_finetuning_study_details(self):
-        study_storage = self.models_path / "finetuning_studies" / f"{self.study_name}.sql"
+        postfix = '.sql'
+        if self.study_storage_name.endswith('.sql'):
+            postfix = ''
+
+        study_storage = self.models_path / "finetuning_studies" / f"{self.study_storage_name}{postfix}"
         study_storage.parent.mkdir(parents=True, exist_ok=True)
 
         return {
@@ -169,9 +178,14 @@ class BERTopicTrainer:
         }
 
     def objective(self, trial: Trial):
-        self.set_hyperparameters(trial=trial)
-        train_score, validation_score = self.finetune()
-        trial.report(validation_score, step=1)
+        try:
+            self.set_hyperparameters(trial=trial)
+            train_score, validation_score = self.finetune()
+            trial.report(validation_score, step=1)
+        except Exception as e:
+            self.logger.error(f"Trial {trial.number} failed with error: {e}")
+            trial.set_user_attr(key="failure_reason", value=str(e))
+            raise optuna.exceptions.TrialPruned() from e
 
         return validation_score
 
@@ -221,6 +235,9 @@ class BERTopicTrainer:
 
         except Exception as e:
             raise Exception(f"Trial for num_categories {hp.nr_topics} failed with errror - {e}")
+        finally:
+            gc.collect()
+            torch.cuda.empty_cache()
 
     def replace_best_model(self, model, train_score, validation_score):
         if train_score < self.best_score and validation_score < self.best_validation_score:

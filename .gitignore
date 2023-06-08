@@ -7,4 +7,4 @@ dataset
 *.pyc
 **/*.ipynb_checkpoints
 **/*.fuse_hidden*
-**/models/*
+**/models/*.bin

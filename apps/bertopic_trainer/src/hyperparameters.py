@@ -9,7 +9,6 @@ class BertopicHyperparameters:
         self.logger = logger
         self.config = config
         self.hyperparameters_config = self.config['hyperparameters']
-        self.process_hyperparameters()
 
         self.logger.debug(f"Preparing hyperparameters")
 
@@ -24,12 +23,11 @@ class BertopicHyperparameters:
         self.min_topic_size = int(trial.suggest_categorical(name='min_topic_size',
                                                             choices=self.hyperparameters_config.get('min_topic_size',
                                                                                                     10)))
-        self.n_gram_range = trial.suggest_categorical(name='n_gram_range',
-                                      choices=self.hyperparameters_config.get('n_gram_range', (1, 1)))
-        if isinstance(self.n_gram_range, str):
-            self.n_gram_range = eval(tuple(self.n_gram_range))
-        elif isinstance(self.n_gram_range, list):
-            self.n_gram_range = tuple(self.n_gram_range)
+        self.n_gram_range_start = int(trial.suggest_categorical(name='n_gram_range_start',
+                                      choices=self.hyperparameters_config.get('n_gram_range_start', 1)))
+        self.n_gram_range_end = int(trial.suggest_categorical(name='n_gram_range_end',
+                                                                choices=self.hyperparameters_config.get(
+                                                                    'n_gram_range_end', 1)))
 
         # count vectorizer params
         self.max_features = int(trial.suggest_categorical(name='max_features',
@@ -83,8 +81,3 @@ class BertopicHyperparameters:
     def model_normalized_name(self):
         model_normalized_name = re.sub("/", "_", self.model_name)
         return model_normalized_name
-
-    def process_hyperparameters(self):
-        n_gram_range_list = self.hyperparameters_config['n_gram_range']
-        n_gram_range_list = [tuple(x) for x in n_gram_range_list]
-        self.hyperparameters_config['n_gram_range'] = n_gram_range_list

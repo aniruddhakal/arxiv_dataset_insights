@@ -2,39 +2,35 @@ logging_dir: "../logs"
 logfile_name: "bertopic_trainer_logs.txt"
 logging_level: "DEBUG"
 
-study_name: "distilled_model_choice_sample_dataset2"
+study_name: "top_params_finetuning_3"
 study_storage_filename: "distilled_model_choice_experiments_dataset5.sql"
 
 dataset_path: "../../dataset"
 models_path: "../../models"
 
-batch_size: 384
+batch_size: 768
 dataset_index: 5
-n_trials: 288
+n_trials: 25200
 
 hyperparameters:
   model_name: [
     'sentence-transformers/distilroberta-base-paraphrase-v1',
-    'sentence-transformers/stsb-distilroberta-base-v2',
-    'sentence-transformers/distilbert-base-nli-stsb-quora-ranking',
-    'distilbert-base-nli-mean-tokens'
   ]
 
-  nr_topics: [15, 75, 160, 210, 300, 400]
-  top_n_words: [10, 30, 80, 120]
-  min_topic_size: [15]
-  #  n_gram_range: [(1, 1), (1,2), (1,3)]
+  nr_topics: [50, 100, 175, 180, 185, 190, 195, 200, 250]
+  top_n_words: [30]
+  min_topic_size: [15, 250, 500, 800, 1500, 2000]
   n_gram_range_start: [ 1 ]
-  n_gram_range_end: [ 1, 2 ]
+  n_gram_range_end: [ 1 ]
   
   # count vectorizer params
   max_features: [60000]
-  max_df: [0.999]
-  min_df: [0.001]
+  max_df: [0.88, 0.9, 0.93, 0.96]
+  min_df: [0.1, 0.13, 0.17]
   lowercase: [true]
 
   # umap params
-  n_neighbors: [3, 15, 40]
+  n_neighbors: [25, 30, 35, 40, 45]
   n_components: [256]
   umap_metric: ['euclidean']
   n_epochs: [200]
@@ -43,7 +39,7 @@ hyperparameters:
   random_state: [65]
 
   # hdbscan params
-  min_cluster_size: [5]
+  min_cluster_size: [25, 35, 45, 55, 85, 120, 300, 500]
   cluster_selection_epsilon: [0.0]
   hdbscan_metric:  ['euclidean']
   cluster_selection_method: ['eom']
