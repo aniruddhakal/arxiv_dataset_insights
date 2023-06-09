@@ -8,3 +8,4 @@ dataset
 **/*.ipynb_checkpoints
 **/*.fuse_hidden*
 **/models/*.bin
+**/*.bin

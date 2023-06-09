@@ -2,35 +2,37 @@ logging_dir: "../logs"
 logfile_name: "bertopic_trainer_logs.txt"
 logging_level: "DEBUG"
 
-study_name: "top_params_finetuning_2"
+study_name: "distilled_model_selection_sample_dataset5_2"
 study_storage_filename: "distilled_model_choice_experiments_dataset5.sql"
 
 dataset_path: "../../dataset"
 models_path: "../../models"
 
-batch_size: 896
+batch_size: 3072
 dataset_index: 5
-n_trials: 11340
+n_trials: 1920
 
 hyperparameters:
   model_name: [
     'sentence-transformers/distilroberta-base-paraphrase-v1',
+    'distilbert-base-nli-mean-tokens',
+    'allenai/scibert_scivocab_uncased'
   ]
 
-  nr_topics: [175, 180, 185, 190, 195, 200]
-  top_n_words: [30]
-  min_topic_size: [15, 100, 150, 200, 250, 500, 800]
+  nr_topics: [320, 330, 340, 350, 365, 400, 600, 800]
+  top_n_words: [80, 120]
+  min_topic_size: [30, 80]
   n_gram_range_start: [ 1 ]
   n_gram_range_end: [ 1 ]
   
   # count vectorizer params
-  max_features: [60000]
-  max_df: [0.85, 0.87, 0.9]
-  min_df: [0.08, 0.1, 0.13]
+  max_features: [10000, 30000, 60000, 120000]
+  max_df: [0.93]
+  min_df: [0.1]
   lowercase: [true]
 
   # umap params
-  n_neighbors: [40, 45, 50, 55, 60, 65]
+  n_neighbors: [45]
   n_components: [256]
   umap_metric: ['euclidean']
   n_epochs: [200]
@@ -39,7 +41,7 @@ hyperparameters:
   random_state: [65]
 
   # hdbscan params
-  min_cluster_size: [5, 10, 15, 20, 25]
+  min_cluster_size: [20, 45, 75, 200, 800]
   cluster_selection_epsilon: [0.0]
   hdbscan_metric:  ['euclidean']
   cluster_selection_method: ['eom']

@@ -1,19 +1,21 @@
+import gc
+import re
 from logging import Logger
 from typing import List
 
-import gc
 import numpy as np
 import optuna
+import spacy
 import torch
 from bertopic import BERTopic
 from cuml import HDBSCAN, UMAP
 from datasets import load_dataset
 from gensim.corpora import Dictionary
 from gensim.models.coherencemodel import CoherenceModel
+from gensim.parsing.preprocessing import STOPWORDS
 from optuna.trial import Trial
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
-from gensim.parsing.preprocessing import STOPWORDS
 
 from hyperparameters import BertopicHyperparameters
 from util import *
@@ -38,12 +40,15 @@ class BERTopicTrainer:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.datasets = self.load_datasets(dataset_index=self.dataset_index)
+        self.datasets = {}
         self.dataset_keys = list(self.datasets.keys())
+        self.embeddings = {}
+
+        self.spacy_nlp = spacy.load("en_core_web_lg")
 
         self.best_model = None
-        self.best_score = 1_000_000
-        self.best_validation_score = 1_000_000
+        self.best_score = -1
+        self.best_validation_score = -1
 
         self.hyperparameters = None
 
@@ -53,16 +58,14 @@ class BERTopicTrainer:
             'diversity': [],
         }
 
-    def extract_or_load_embeddings(self, split_name: str):
+    def extract_or_load_embeddings(self, split_name: str, cache=True):
+        # TODO make caching explicitly configurable through config file
         self.logger.debug(f"Loading embeddings for split {split_name}")
         embeddings = self.load_embeddings(split_name)
         sentences = self.datasets[split_name]['abstract'][:]
 
-        generating_fresh = False
-
         if not (embeddings is not None and embeddings.shape[0] == len(sentences)):
             self.logger.debug(f"Generating fresh embeddings for {len(sentences)} sentences")
-            generating_fresh = True
 
             sentence_transformer = SentenceTransformer(model_name_or_path=self.hyperparameters.model_name,
                                                        device=self.device)
@@ -73,8 +76,10 @@ class BERTopicTrainer:
                                                      convert_to_numpy=True,
                                                      show_progress_bar=True)
 
-        if generating_fresh:
             self.save_embeddings(split_name, embeddings=embeddings)
+
+            if cache:
+                self.embeddings[split_name] = embeddings
 
         return embeddings
 
@@ -87,14 +92,16 @@ class BERTopicTrainer:
         self.logger.debug(f"Saved embeddings of shape {embeddings.shape} in file {embeddings_filename}")
 
     def load_embeddings(self, split_name: str):
-        embeddings_filename = self.get_embeddings_filename(split_name)
-        embeddings = None
+        embeddings = self.embeddings.get(split_name)
 
-        if Path(embeddings_filename).exists():
-            try:
-                embeddings = np.load(embeddings_filename)
-            except FileNotFoundError as e:
-                self.logger.error(f"Expected file named {embeddings_filename} was not found")
+        if embeddings is None:
+            embeddings_filename = self.get_embeddings_filename(split_name)
+
+            if Path(embeddings_filename).exists():
+                try:
+                    embeddings = np.load(embeddings_filename)
+                except FileNotFoundError as e:
+                    self.logger.error(f"Expected file named {embeddings_filename} was not found")
 
         return embeddings
 
@@ -104,30 +111,40 @@ class BERTopicTrainer:
             f"split-{split_name}_dataset-{self.dataset_index}_model-{self.hyperparameters.model_normalized_name}_embeddings.npy"
         )
 
+    def load_dataset(self, split: str, lemmatized: bool=False, cache=True, dataset_index: int=None):
+        if dataset_index is None:
+            dataset_index = self.dataset_index
+        prefix = ""
+
+        if lemmatized:
+            prefix = "lemmatized_"
+
+        cache_name = split
+        if lemmatized:
+            cache_name = f"{prefix}{cache_name}"
+
+        dataset = self.datasets.get(cache_name)
+        if dataset is None:
+            dataset = \
+                load_dataset('parquet', data_files=[str(self.dataset_path / f"{prefix}{split}_df_dataset_{dataset_index}.pq")],
+                             cache_dir=self.cache_dir)['train']
+
+            if cache:
+                self.datasets[cache_name] = dataset
+
+        return dataset
+
     def load_datasets(self, dataset_index: int, load_train: bool = True, load_validation: bool = True,
                       load_test: bool = True):
-        datasets = {}
 
         if load_train:
-            train_dataset = \
-                load_dataset('parquet', data_files=[str(self.dataset_path / f"train_df_dataset_{dataset_index}.pq")],
-                             cache_dir=self.cache_dir)['train']
-            datasets['train'] = train_dataset
+            self.load_dataset(dataset_index=dataset_index, split='train', lemmatized=False)
 
         if load_validation:
-            validation_dataset = \
-                load_dataset('parquet',
-                             data_files=[str(self.dataset_path / f"validation_df_dataset_{dataset_index}.pq")],
-                             cache_dir=self.cache_dir)['train']
-            datasets['validation'] = validation_dataset
+            self.load_dataset(dataset_index=dataset_index, split='validation', lemmatized=False)
 
         if load_test:
-            test_dataset = \
-                load_dataset('parquet', data_files=[str(self.dataset_path / f"test_df_dataset_{dataset_index}.pq")],
-                             cache_dir=self.cache_dir)['train']
-            datasets['test'] = test_dataset
-
-        return datasets
+            self.load_dataset(dataset_index=dataset_index, split='test', lemmatized=False)
 
     def init_model(self):
         self.logger.debug(f"Initializing model")
@@ -158,7 +175,8 @@ class BERTopicTrainer:
             n_gram_range=n_gram_range,
             vectorizer_model=count_vectorizer,
             umap_model=umap_model,
-            hdbscan_model=hdbscan_model
+            hdbscan_model=hdbscan_model,
+            top_n_words=hp.top_n_words,
         )
 
         self.logger.debug(f"Model initialized")
@@ -191,11 +209,19 @@ class BERTopicTrainer:
 
     def test(self):
         # test
-        sentences_test = self.datasets['test']['abstract'][:]  # TODO load test dataset only here, not at the beginning
+        test_dataset = self.load_dataset(split='test', lemmatized=False, cache=True)
+
+        sentences_test = test_dataset['abstract'][:]
         self.logger.debug(f"Testing model performance on test dataset with {len(sentences_test)} samples")
         test_embeddings = self.extract_or_load_embeddings(split_name='test')
         topics, _ = self.best_model.transform(documents=sentences_test, embeddings=test_embeddings)
-        coherence_score_test = self.calculate_coherence_score(model=self.best_model, sentences=sentences_test)
+        del sentences_test
+        del test_embeddings
+
+        lemmatized_test_dataset = self.load_dataset(split='test', lemmatized=True, cache=True)
+        lemmatized_test_sentences = lemmatized_test_dataset['abstract'][:]
+        coherence_score_test = self.calculate_coherence_score(model=self.best_model, sentences=lemmatized_test_sentences)
+        del lemmatized_test_sentences
         self.logger.info(f'Test Score: {coherence_score_test}')
 
     def finetune(self):
@@ -206,8 +232,8 @@ class BERTopicTrainer:
         validation_embeddings = self.extract_or_load_embeddings(split_name='validation')
 
         # fetch texts
-        sentences_train = self.datasets['train']['abstract'][
-                          :]  # TODO is it necessary to load sentences here like this? does it create a separate copy, hence, memory burden?
+        # TODO is it necessary to load sentences here like this? does it create a separate copy, and so the memory burden?
+        sentences_train = self.datasets['train']['abstract'][:]
         sentences_validation = self.datasets['validation']['abstract'][:]
 
         self.logger.debug(f"Processing num_categories = {hp.nr_topics}")
@@ -218,12 +244,20 @@ class BERTopicTrainer:
             self.logger.debug(f"Starting training")
             topics, _ = model.fit_transform(documents=sentences_train, embeddings=train_embeddings)
             self.logger.debug(f"Finished training")
-            coherence_score_train = self.calculate_coherence_score(model=model, sentences=sentences_train)
+
+            lemmatized_train_dataset = self.load_dataset(split='train', lemmatized=True, cache=True)
+            lemmatized_train_sentences = lemmatized_train_dataset['abstract'][:]
+            coherence_score_train = self.calculate_coherence_score(model=model, sentences=lemmatized_train_sentences)
+            del lemmatized_train_sentences
 
             # validate
             self.logger.debug(f"Running validations")
             topics, _ = model.transform(documents=sentences_validation, embeddings=validation_embeddings)
-            coherence_score_validation = self.calculate_coherence_score(model=model, sentences=sentences_validation)
+
+            lemmatized_validation_dataset = self.load_dataset(split='validation', lemmatized=True, cache=True)
+            lemmatized_validation_sentences = lemmatized_validation_dataset['abstract'][:]
+            coherence_score_validation = self.calculate_coherence_score(model=model, sentences=lemmatized_validation_sentences)
+            del lemmatized_validation_sentences
 
             self.append_score(metric_name='coherence', score=coherence_score_train)
             self.append_score(metric_name='coherence', score=coherence_score_validation)
@@ -240,7 +274,7 @@ class BERTopicTrainer:
             torch.cuda.empty_cache()
 
     def replace_best_model(self, model, train_score, validation_score):
-        if train_score < self.best_score and validation_score < self.best_validation_score:
+        if train_score > self.best_score and validation_score > self.best_validation_score:
             self.logger.info(
                 f"Replacing best model."
                 f" Old validation score: {self.best_validation_score},"
@@ -260,10 +294,14 @@ class BERTopicTrainer:
         self.logger.info(f"Saved model at {model_name}")
 
     def main(self):
+        # load key datasets
+        self.load_datasets(dataset_index=self.dataset_index, load_test=False)
+
         study_details = self._get_finetuning_study_details()
         study_name = study_details.pop('study_name')
         storage = study_details.pop("storage")
-        optuna_study = optuna.create_study(direction='minimize', storage=f"sqlite:///{str(storage)}", study_name=study_name, load_if_exists=True)
+        optuna_study = optuna.create_study(direction='maximize', storage=f"sqlite:///{str(storage)}",
+                                           study_name=study_name, load_if_exists=True)
         optuna_study.optimize(self.objective, n_trials=self.config.get('n_trials', 5))
 
         self.logger.info(f"Best Trial - {optuna_study.best_trial}")
@@ -276,10 +314,39 @@ class BERTopicTrainer:
         else:
             self.logger.warning(f"No best model was set, nothing to save")
 
+    def drop_sep_tokens(self, sentences: List[str]) -> List[str]:
+        processed_sentences = []
+        for sentence in sentences:
+            sentence = re.sub(r"(\s)?SEP(\s)?", " ", sentence, flags=re.IGNORECASE)
+            processed_sentences.append(sentence)
+
+        return processed_sentences
+
+    def lemmatize_sentences(self, sentences, join=True):
+        lemmatized_sentences = []
+
+        sentences = [' '.join(sentence) if isinstance(sentence, list) else sentence for sentence in sentences] # TODO just check 0th element, no need to check everything
+
+        for doc in self.spacy_nlp.pipe(sentences, batch_size=self.batch_size):
+            lemmatized_sentence = list(set([token.lemma_ for token in doc]))
+
+            if join:
+                lemmatized_sentence = ' '.join(lemmatized_sentence)
+
+            lemmatized_sentences.append(lemmatized_sentence)
+
+        return lemmatized_sentences
+
     def calculate_coherence_score(self, model, sentences: List[str]):
         # --------------------------------
         # for calculating coherence score
         cleaned_docs = model._preprocess_text(sentences)
+        cleaned_docs = self.drop_sep_tokens(sentences=cleaned_docs)
+
+        # self.logger.debug(f"Lemmatizing {len(cleaned_docs)} docs")
+        # cleaned_docs = self.lemmatize_sentences(sentences=cleaned_docs) # TODO do lemmatization on all sentences in df, and just load lemmatized sentences, then clean them using model
+        # self.logger.debug(f"Finished Lemmatizing {len(cleaned_docs)} docs")
+
         analyzer = model.vectorizer_model.build_analyzer()
         tokens = [analyzer(doc) for doc in cleaned_docs]
 
@@ -295,6 +362,8 @@ class BERTopicTrainer:
             ]
             for topic in range(len(set(topics)) - 1)
         ]
+        self.logger.debug(f"Lemmatizing {len(topic_words)} topic words lists")
+        topic_words = self.lemmatize_sentences(sentences=topic_words, join=False)
         # --------------------------------
 
         coherence_model = CoherenceModel(topics=topic_words,
