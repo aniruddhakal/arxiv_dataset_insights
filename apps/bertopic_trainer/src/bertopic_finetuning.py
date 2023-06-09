@@ -84,7 +84,7 @@ class BERTopicTrainer:
         return embeddings
 
     def set_hyperparameters(self, trial: Trial):
-        self.hyperparameters = BertopicHyperparameters(config=self.config, trial=trial, logger=self.logger)
+        self.hyperparameters = BertopicHyperparameters(config=self.config, logger=self.logger, trial=trial)
 
     def save_embeddings(self, split_name: str, embeddings: np.ndarray):
         embeddings_filename = self.get_embeddings_filename(split_name)
@@ -184,6 +184,7 @@ class BERTopicTrainer:
 
     def _get_finetuning_study_details(self):
         postfix = '.sql'
+
         if self.study_storage_name.endswith('.sql'):
             postfix = ''
 
@@ -280,18 +281,26 @@ class BERTopicTrainer:
                 f" Old validation score: {self.best_validation_score},"
                 f" New validation score: {validation_score}")
 
+            self.save_model(model=model)
+
             self.best_model = model
             self.best_score = train_score
             self.best_validation_score = validation_score
 
-    def save_model(self, model: BERTopic):  # TODO also save count vectorizer,  umap, and hdbscan models if necessary
+    def save_model(self, model: BERTopic, final_model=False):
+        # TODO also save count vectorizer,  umap, and hdbscan models (if necessary)
         study_details = self._get_finetuning_study_details()
         study_name = study_details.pop('study_name')
-        storage = study_details.pop("storage")
-        model_name = f"{str(storage.parent)}/model.bin"
+        optuna_storage = study_details.pop("storage")
+
+        model_name = f"{str(optuna_storage.parent / study_name)}/best_model.bin"
+
+        if final_model:
+            model_name = f"{str(self.models_path / study_name )}/best_model.bin"
+
         self.logger.debug(f"Saving model at {model_name}")
         model.save(model_name)
-        self.logger.info(f"Saved model at {model_name}")
+        self.logger.debug(f"Saved model at {model_name}")
 
     def main(self):
         # load key datasets
@@ -316,6 +325,7 @@ class BERTopicTrainer:
 
     def drop_sep_tokens(self, sentences: List[str]) -> List[str]:
         processed_sentences = []
+
         for sentence in sentences:
             sentence = re.sub(r"(\s)?SEP(\s)?", " ", sentence, flags=re.IGNORECASE)
             processed_sentences.append(sentence)
@@ -325,7 +335,8 @@ class BERTopicTrainer:
     def lemmatize_sentences(self, sentences, join=True):
         lemmatized_sentences = []
 
-        sentences = [' '.join(sentence) if isinstance(sentence, list) else sentence for sentence in sentences] # TODO just check 0th element, no need to check everything
+        # TODO just check 0th element, no need to check everything
+        sentences = [' '.join(sentence) if isinstance(sentence, list) else sentence for sentence in sentences]
 
         for doc in self.spacy_nlp.pipe(sentences, batch_size=self.batch_size):
             lemmatized_sentence = list(set([token.lemma_ for token in doc]))
@@ -343,8 +354,9 @@ class BERTopicTrainer:
         cleaned_docs = model._preprocess_text(sentences)
         cleaned_docs = self.drop_sep_tokens(sentences=cleaned_docs)
 
+        # [DONE] do lemmatization on all sentences in df, and just load lemmatized sentences, then clean them using model
         # self.logger.debug(f"Lemmatizing {len(cleaned_docs)} docs")
-        # cleaned_docs = self.lemmatize_sentences(sentences=cleaned_docs) # TODO do lemmatization on all sentences in df, and just load lemmatized sentences, then clean them using model
+        # cleaned_docs = self.lemmatize_sentences(sentences=cleaned_docs)
         # self.logger.debug(f"Finished Lemmatizing {len(cleaned_docs)} docs")
 
         analyzer = model.vectorizer_model.build_analyzer()

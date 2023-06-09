@@ -5,7 +5,7 @@ from optuna.trial import Trial
 
 
 class BertopicHyperparameters:
-    def __init__(self, config: dict, trial: Trial, logger: Logger):
+    def __init__(self, config: dict, logger: Logger, trial: Trial):
         self.logger = logger
         self.config = config
         self.hyperparameters_config = self.config['hyperparameters']
