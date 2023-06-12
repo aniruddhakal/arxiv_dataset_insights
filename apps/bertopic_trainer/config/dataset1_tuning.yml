@@ -2,7 +2,7 @@ logging_dir: "../logs"
 logfile_name: "bertopic_trainer_logs.txt"
 logging_level: "DEBUG"
 
-study_name: "tuning_dataset1_study1"
+study_name: "tuning_dataset1_study2"
 study_storage_filename: "dataset1_finetuning.sql"
 
 dataset_path: "../../dataset"
@@ -10,14 +10,14 @@ models_path: "../../models"
 
 batch_size: 64
 dataset_index: 1
-n_trials: 112
+n_trials: 180
 
 hyperparameters:
   model_name: [
     'sentence-transformers/distilroberta-base-paraphrase-v1',
   ]
 
-  nr_topics: [15, 210, 380, 400, 800, 950, 1200 ]
+  nr_topics: [100, 185, 400, 800, 600]
   top_n_words: [80]
   min_topic_size: [30]
   n_gram_range_start: [ 1 ]
@@ -31,7 +31,7 @@ hyperparameters:
 
   # umap params
   n_neighbors: [45]
-  n_components: [ 64, 128, 256 ]
+  n_components: [ 16, 32, 64 ]
   umap_metric: ['euclidean']
   n_epochs: [200]
   learning_rate: [1.0]
@@ -39,7 +39,7 @@ hyperparameters:
   random_state: [65]
 
   # hdbscan params
-  min_cluster_size: [ 45, 800, 950, 1200 ]
+  min_cluster_size: [ 45, 800, 1200 ]
   cluster_selection_epsilon: [0.1]
   hdbscan_metric:  ['euclidean']
   cluster_selection_method: ['leaf']

@@ -20,7 +20,6 @@
 - #### Influence of various text embeddings on clustering performance in NLP (https://arxiv.org/pdf/2305.03144.pdf)
   - Extract CLS (intended for classification purposes), Average (pooler) state and apply clustering on it
 
-- #### Label Encoding
 
 ### EDA
 
@@ -32,7 +31,8 @@
 ### Data Preprocessing
 
 - The input text is the abstract of scientific papers. So, I'd assume use of stop words serves meaningful purpose, and
-therefore shouldn't be removed before inference from transformer models.
+therefore shouldn't be removed before inference from transformer models. Although, I remove stop words when CountVectorizer is called.
+And the list of stopwords is used from Gensim library - `gensim.parsing.preprocessing.STOPWORDS`
 
 - Basic cleaning - I only performed basic text cleaning as follows:
   - Replace `\n`'s with a space.
@@ -40,7 +40,7 @@ therefore shouldn't be removed before inference from transformer models.
   and hence, always miss the special token `[SEP]`, which has impact on the final representation of the document.
     - Although, in initial experiment, the downstream model I ended up using is `sentence-transformers/distilroberta-base-paraphrase-v1`.
     - And since `RoBERTa` model rather uses `<sep>` as a separator token, and my preprocessed data still contains `[SEP]` tokens, `sep` is going
-    to exist across all the topics as a noise.
+    to exist across all the documents as a noise.
     - Hence, there's a risk of having a lot of similarity across all the documents just because of this mistake.
     - **[TODO for myself]** I'll fix this in coming iterations. I'm just choosing to continue as is because I have already
     generated data splits, and corresponding document embeddings for abstracts.

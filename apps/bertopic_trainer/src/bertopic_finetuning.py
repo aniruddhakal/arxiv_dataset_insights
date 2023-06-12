@@ -47,7 +47,6 @@ class BERTopicTrainer:
 
         self.spacy_nlp = spacy.load("en_core_web_lg")
 
-        self.best_model = None
         self.best_score = -1
         self.best_validation_score = -1
 
@@ -218,16 +217,59 @@ class BERTopicTrainer:
         sentences_test = test_dataset['abstract'][:]
         self.logger.debug(f"Testing model performance on test dataset with {len(sentences_test)} samples")
         test_embeddings = self.extract_or_load_embeddings(split_name='test')
-        topics, _ = self.best_model.transform(documents=sentences_test, embeddings=test_embeddings)
+
+        self.logger.debug(f"Loading best model")
+        model = self.load_best_model()
+        self.logger.debug(f"Running inference on test dataset")
+        topics, _ = model.transform(documents=sentences_test, embeddings=test_embeddings)
         del sentences_test
         del test_embeddings
 
         lemmatized_test_dataset = self.load_dataset(split='test', lemmatized=True, cache=True)
         lemmatized_test_sentences = lemmatized_test_dataset['abstract'][:]
-        coherence_score_test = self.calculate_coherence_score(model=self.best_model,
+        coherence_score_test = self.calculate_coherence_score(model=model,
                                                               sentences=lemmatized_test_sentences)
         del lemmatized_test_sentences
         self.logger.info(f'Test Score: {coherence_score_test}')
+
+    def train_model(self, lemmatized_train_dataset, train_embeddings, lemmatized_validation_dataset,
+                    validation_embeddings):
+        model = self.init_model()
+
+        # fit to model
+        self.logger.debug(f"Starting training")
+        # model.pa
+        lemmatized_train_sentences = lemmatized_train_dataset['abstract'][:]
+        topics, _ = model.fit_transform(documents=lemmatized_train_sentences,
+                                        embeddings=train_embeddings.astype(np.float16))
+        # model.partial_fit(documents=lemmatized_train_sentences, embeddings=train_embeddings)
+        # model.get_topics()
+        self.logger.debug(f"Finished training")
+
+        coherence_score_train = self.calculate_coherence_score(model=model, sentences=lemmatized_train_sentences)
+        del lemmatized_train_sentences
+
+        # validate
+        self.logger.debug(f"Running validations")
+        lemmatized_validation_sentences = lemmatized_validation_dataset['abstract'][:]
+        topics, _ = model.transform(documents=lemmatized_validation_sentences,
+                                    embeddings=validation_embeddings.astype(np.float16))
+
+        coherence_score_validation = self.calculate_coherence_score(model=model,
+                                                                    sentences=lemmatized_validation_sentences)
+        del lemmatized_validation_sentences
+
+        self.append_score(metric_name='coherence', score=coherence_score_train)
+        self.append_score(metric_name='coherence', score=coherence_score_validation)
+
+        self.replace_best_model(model, train_score=coherence_score_train,
+                                validation_score=coherence_score_validation)
+
+        del model
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        return coherence_score_train, coherence_score_validation
 
     def finetune(self):
         hp = self.hyperparameters
@@ -237,45 +279,14 @@ class BERTopicTrainer:
         validation_embeddings = self.extract_or_load_embeddings(split_name='validation')
 
         # fetch texts
-        # TODO is it necessary to load sentences here like this? does it create a separate copy, and so the memory burden?
-        # sentences_train = self.datasets['train']['abstract'][:]
-        # sentences_validation = self.datasets['validation']['abstract'][:]
         lemmatized_train_dataset = self.load_dataset(split='train', lemmatized=True, cache=True)
         lemmatized_validation_dataset = self.load_dataset(split='validation', lemmatized=True, cache=True)
 
         self.logger.debug(f"Processing num_categories = {hp.nr_topics}")
         try:
-            model = self.init_model()
-
-            # fit to model
-            self.logger.debug(f"Starting training")
-            # model.pa
-            lemmatized_train_sentences = lemmatized_train_dataset['abstract'][:]
-            # topics, _ = model.fit_transform(documents=lemmatized_train_sentences, embeddings=train_embeddings, partial_fit=True)
-            model.partial_fit(documents=lemmatized_train_sentences, embeddings=train_embeddings)
-            # model.get_topics()
-            self.logger.debug(f"Finished training")
-
-            coherence_score_train = self.calculate_coherence_score(model=model, sentences=lemmatized_train_sentences)
-            del lemmatized_train_sentences
-
-            # validate
-            self.logger.debug(f"Running validations")
-            lemmatized_validation_sentences = lemmatized_validation_dataset['abstract'][:]
-            topics, _ = model.transform(documents=lemmatized_validation_sentences, embeddings=validation_embeddings)
-
-            coherence_score_validation = self.calculate_coherence_score(model=model,
-                                                                        sentences=lemmatized_validation_sentences)
-            del lemmatized_validation_sentences
-
-            self.append_score(metric_name='coherence', score=coherence_score_train)
-            self.append_score(metric_name='coherence', score=coherence_score_validation)
-
-            self.replace_best_model(model, train_score=coherence_score_train,
-                                    validation_score=coherence_score_validation)
-
-            return coherence_score_train, coherence_score_validation
-
+            self.train_model(lemmatized_train_dataset=lemmatized_train_dataset, train_embeddings=train_embeddings,
+                             lemmatized_validation_dataset=lemmatized_validation_dataset,
+                             validation_embeddings=validation_embeddings)
         except Exception as e:
             raise Exception(f"Trial for num_categories {hp.nr_topics} failed with errror - {e}")
         finally:
@@ -291,7 +302,6 @@ class BERTopicTrainer:
 
             self.save_model(model=model)
 
-            self.best_model = model
             self.best_score = train_score
             self.best_validation_score = validation_score
 
@@ -310,9 +320,21 @@ class BERTopicTrainer:
         model.save(model_name)
         self.logger.debug(f"Saved model at {model_name}")
 
+    def load_best_model(self):
+        study_details = self._get_finetuning_study_details()
+        study_name = study_details.pop('study_name')
+        optuna_storage = study_details.pop('storage')
+
+        target_dir = optuna_storage.parent / study_name
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        model_name = f"{str(target_dir)}/best_model.bin"
+        model = CustomBERTopic.load(path=model_name)
+        return model
+
     def main(self):
         # load key datasets
-        # self.load_datasets(dataset_index=self.dataset_index, load_test=False)
+        self.load_datasets(dataset_index=self.dataset_index, load_test=False)
 
         study_details = self._get_finetuning_study_details()
         study_name = study_details.pop('study_name')
@@ -324,12 +346,6 @@ class BERTopicTrainer:
         self.logger.info(f"Best Trial - {optuna_study.best_trial}")
         self.logger.info(f"Best Value - {optuna_study.best_value}")
         self.logger.info(f"Best Params - {optuna_study.best_params}")
-
-        if self.best_model is not None:
-            self.logger.info(f"Saving best model")
-            self.save_model(model=self.best_model)
-        else:
-            self.logger.warning(f"No best model was set, nothing to save")
 
     def drop_sep_tokens(self, sentences: List[str]) -> List[str]:
         processed_sentences = []
