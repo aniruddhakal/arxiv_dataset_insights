@@ -7,6 +7,7 @@ import numpy as np
 import optuna
 import spacy
 import torch
+from custom_bertopic import CustomBERTopic
 from bertopic import BERTopic
 from cuml import HDBSCAN, UMAP
 from datasets import load_dataset
@@ -111,7 +112,7 @@ class BERTopicTrainer:
             f"split-{split_name}_dataset-{self.dataset_index}_model-{self.hyperparameters.model_normalized_name}_embeddings.npy"
         )
 
-    def load_dataset(self, split: str, lemmatized: bool=False, cache=True, dataset_index: int=None):
+    def load_dataset(self, split: str, lemmatized: bool = False, cache=True, dataset_index: int = None):
         if dataset_index is None:
             dataset_index = self.dataset_index
         prefix = ""
@@ -126,7 +127,8 @@ class BERTopicTrainer:
         dataset = self.datasets.get(cache_name)
         if dataset is None:
             dataset = \
-                load_dataset('parquet', data_files=[str(self.dataset_path / f"{prefix}{split}_df_dataset_{dataset_index}.pq")],
+                load_dataset('parquet',
+                             data_files=[str(self.dataset_path / f"{prefix}{split}_df_dataset_{dataset_index}.pq")],
                              cache_dir=self.cache_dir)['train']
 
             if cache:
@@ -170,7 +172,8 @@ class BERTopicTrainer:
                                 prediction_data=True)
 
         # Create BERTopic with current number of categories
-        model = BERTopic(
+        model = CustomBERTopic(
+            logger=self.logger,
             nr_topics=hp.nr_topics,
             n_gram_range=n_gram_range,
             vectorizer_model=count_vectorizer,
@@ -221,7 +224,8 @@ class BERTopicTrainer:
 
         lemmatized_test_dataset = self.load_dataset(split='test', lemmatized=True, cache=True)
         lemmatized_test_sentences = lemmatized_test_dataset['abstract'][:]
-        coherence_score_test = self.calculate_coherence_score(model=self.best_model, sentences=lemmatized_test_sentences)
+        coherence_score_test = self.calculate_coherence_score(model=self.best_model,
+                                                              sentences=lemmatized_test_sentences)
         del lemmatized_test_sentences
         self.logger.info(f'Test Score: {coherence_score_test}')
 
@@ -234,8 +238,10 @@ class BERTopicTrainer:
 
         # fetch texts
         # TODO is it necessary to load sentences here like this? does it create a separate copy, and so the memory burden?
-        sentences_train = self.datasets['train']['abstract'][:]
-        sentences_validation = self.datasets['validation']['abstract'][:]
+        # sentences_train = self.datasets['train']['abstract'][:]
+        # sentences_validation = self.datasets['validation']['abstract'][:]
+        lemmatized_train_dataset = self.load_dataset(split='train', lemmatized=True, cache=True)
+        lemmatized_validation_dataset = self.load_dataset(split='validation', lemmatized=True, cache=True)
 
         self.logger.debug(f"Processing num_categories = {hp.nr_topics}")
         try:
@@ -243,21 +249,23 @@ class BERTopicTrainer:
 
             # fit to model
             self.logger.debug(f"Starting training")
-            topics, _ = model.fit_transform(documents=sentences_train, embeddings=train_embeddings)
+            # model.pa
+            lemmatized_train_sentences = lemmatized_train_dataset['abstract'][:]
+            # topics, _ = model.fit_transform(documents=lemmatized_train_sentences, embeddings=train_embeddings, partial_fit=True)
+            model.partial_fit(documents=lemmatized_train_sentences, embeddings=train_embeddings)
+            # model.get_topics()
             self.logger.debug(f"Finished training")
 
-            lemmatized_train_dataset = self.load_dataset(split='train', lemmatized=True, cache=True)
-            lemmatized_train_sentences = lemmatized_train_dataset['abstract'][:]
             coherence_score_train = self.calculate_coherence_score(model=model, sentences=lemmatized_train_sentences)
             del lemmatized_train_sentences
 
             # validate
             self.logger.debug(f"Running validations")
-            topics, _ = model.transform(documents=sentences_validation, embeddings=validation_embeddings)
-
-            lemmatized_validation_dataset = self.load_dataset(split='validation', lemmatized=True, cache=True)
             lemmatized_validation_sentences = lemmatized_validation_dataset['abstract'][:]
-            coherence_score_validation = self.calculate_coherence_score(model=model, sentences=lemmatized_validation_sentences)
+            topics, _ = model.transform(documents=lemmatized_validation_sentences, embeddings=validation_embeddings)
+
+            coherence_score_validation = self.calculate_coherence_score(model=model,
+                                                                        sentences=lemmatized_validation_sentences)
             del lemmatized_validation_sentences
 
             self.append_score(metric_name='coherence', score=coherence_score_train)
@@ -293,10 +301,10 @@ class BERTopicTrainer:
         study_name = study_details.pop('study_name')
         optuna_storage = study_details.pop("storage")
 
-        model_name = f"{str(optuna_storage.parent / study_name)}/best_model.bin"
+        target_dir = self.models_path / study_name if final_model else optuna_storage.parent / study_name
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-        if final_model:
-            model_name = f"{str(self.models_path / study_name )}/best_model.bin"
+        model_name = f"{str(target_dir)}/best_model.bin"
 
         self.logger.debug(f"Saving model at {model_name}")
         model.save(model_name)
@@ -304,7 +312,7 @@ class BERTopicTrainer:
 
     def main(self):
         # load key datasets
-        self.load_datasets(dataset_index=self.dataset_index, load_test=False)
+        # self.load_datasets(dataset_index=self.dataset_index, load_test=False)
 
         study_details = self._get_finetuning_study_details()
         study_name = study_details.pop('study_name')

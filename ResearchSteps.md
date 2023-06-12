@@ -29,22 +29,33 @@
 	- average number of words per abstract
     - explore and do EDA based on certain fields
 
-### Preprocess the data
+### Data Preprocessing
 
-The input text is the abstract of scientific papers. So, I'd assume use of stop words serves meaningful purpose, and
-therefore shouldn't be removed.  
-During the data exploration, the essential steps to the need for preprocessing will revolve around finding any
-characters that aren't supposed
-to be the part of usual abstracts. e.g. Some symbols that might be encoded incorrectly into the text, or finding some
-out of vocabulary (OOV) words, and characters.
-The WordPiece tokenizer of BERT would still make sure to assign appropriate token to almost every possible word in the
-corpus, therefore, there might not be any need for us to handle OOV words explicitly.
+- The input text is the abstract of scientific papers. So, I'd assume use of stop words serves meaningful purpose, and
+therefore shouldn't be removed before inference from transformer models.
 
-- TODO check if there are any words missing from the original text after the tokenizer generated text is decoded back to
-  original text.
-    - If 100% of the original text is restored, or if the missing portion isn't significant enough in terms of the
-      contribution towards the domain knowledge,
-    - we don't need to worry about handling any OOV words / tokens explicitly.
+- Basic cleaning - I only performed basic text cleaning as follows:
+  - Replace `\n`'s with a space.
+  - Add `[SEP]` token when sentence is finished with full stop, because pretrained tokenizers don't do it themselves,
+  and hence, always miss the special token `[SEP]`, which has impact on the final representation of the document.
+    - Although, in initial experiment, the downstream model I ended up using is `sentence-transformers/distilroberta-base-paraphrase-v1`.
+    - And since `RoBERTa` model rather uses `<sep>` as a separator token, and my preprocessed data still contains `[SEP]` tokens, `sep` is going
+    to exist across all the topics as a noise.
+    - Hence, there's a risk of having a lot of similarity across all the documents just because of this mistake.
+    - **[TODO for myself]** I'll fix this in coming iterations. I'm just choosing to continue as is because I have already
+    generated data splits, and corresponding document embeddings for abstracts.
+    and I don't want to spend anymore time re-doing all that in initial iteration.
+
+- Because I have chosen to work with BERTopic, which, after extracting
+embeddings from transformer models, the only place where original text is then used is in c-tfidf model.
+Since, c-tfidf model still uses traditional CountVectorizer and TF-IDF Transformer on top of it, where contextual word embeddings from
+transformer model aren't used to compute similarities. And hence, it's necessary to perform lemmatization on all documents, so that words with similar base lexical meaning aren't treated differently.
+In this implementation, I only performed offline lemmatization and ensure they are used only after the for c-tf-idf step, while the transformer embeddings are generated
+using the full abstract text with basic cleaning as covered in previous step.
+
+- The WordPiece tokenizer of BERT would still make sure to assign appropriate token to almost every possible token in the
+corpus, therefore, there might is no need for us to handle OOV words explicitly. Except, where I started seeing some irrelevant words / symbols 
+making up the part of the topic labels. Then I can consider removing such symbols / tokens.
 
 ### Train classifier
 #### - Model choice steps
@@ -65,6 +76,8 @@ corpus, therefore, there might not be any need for us to handle OOV words explic
 ### Evaluate the model's performance on the validation set using appropriate metrics.
 
 ### Perform hyperparameter tuning or model selection to improve the model's performance.
+![img.png](resources/img.png)
+The image above shows `cluster_selection_eps of 0.2`, and `min_cluster_size of 200, and 600` contributing to `higher coherence score of 0.6 and above`.
 
 ### Conclude your findings in a final report When choosing models
 
