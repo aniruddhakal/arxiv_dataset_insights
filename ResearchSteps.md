@@ -7,28 +7,79 @@
 
 ## Use abstracts for classification and subject categories for class association.
 
-## My Steps
+## Research Steps
+1. [Literature Review](#literature-review)
+  1. [Top Articles / Papers / Implementations Referred](#top-articles--papers--implementations-referred)
+1. [Exploratory Data Analysis](#eda)
+1. [Data Preprocessing](#data-preprocessing)
+1. [Train a Classifier](#train-a-classifier)
+1. [Performance Evaluations](#performance-evaluation-)
+1. [Hyperparameter Tuning](#hyperparameter-tuning-)
+1. [Conclusions](#conclusions)
+1. [Data Visualizations](#data-visualizations)
+1. [Issues Faced](#issues-faced)
 
-### Literature Review
+## Literature Review
+  - Classifying documents into unknown number of classes and figuring out the optimal number of classes is majorly
+  solved using these approaches:
+    1. Clustering
+    2. Topic Modeling
+  - The issue with Clustering based approaches is it doesn't take document topic prior and word topic prior, which is
+  addressed by topic modeling approaches such as LDA.
+  - While Topic Modeling algorithms such as LDA account for word and document topic prior's, they still rely on the traditional
+  CountVectorizer, or TF-IDF based approaches yet using the smaller dictionary with limited vocabulary. The preprocessing logic
+  thus relies on removing stop-words, followed by either stemming or lemmatization for the remaining tokens, so that most of the similar
+  tokens, irregardless of the context, are accounted for. So that having brought all words to their lexical base forms, they contribute
+  to the overall term frequency as the same word.
+  - Although, we are still giving up on contextual meaning of word by just stemming or lemmatizing them. Which can be overcome by utilizing
+  the modern Deep Learning architectures such as Transformers based models. Transformers allow us to extract mainly two types of representations:
+    1. Token Level Representation - Different embedding for every word (depending on surrounding context).
+    2. Document Level Representation - Pooling layer representation (average of all word representations for a given document).
+  - We can either go heavy and try clustering individual token level representations for all documents. Which is unexplored in our current study.
+  - Or we can simply go with option 2 - Clustering Document Level Representation.
+  - Either way, we'd still end up in a challenge of selecting top words for topics, or having too many topics, and face challenge of reducing / merging
+  similar topics.
+  - Saha et. al. in [4] has demonstrated use of KMeans, DBSCAN, and HDBSCAN clustering algorithms on BERT-Average, BERT-CLS, and Word2Vec embeddings
+  which is evaluated across metrics such as Silhouette Score, Adjusted Rand Index Score, Purity Score etc.
+  - The study demonstrates that BERT embeddings mostly best the Word2Vec embeddings across most of the
+  clustering techniques and evaluation metrics.
+  - Although, their study is fairly limited to just single dataset comprised of consumer electronics from one brand.
+  - Further to that, it also becomes crucial on which model do we use to extract embeddings. Jinghui et. al. in [2] introduced
+  SBERT where they build Siamese network on top of Transformer models, and finetune the network for sentence similarity task,
+  making it much more faster and easier to find similar sentence pairs.
+  - Although, we still face computational challenges trying to extract embeddings from SBERT model variants given the size of the arxiv dataset,
+  hence, we go further exploring options to reduce number of parameters used by the model. Which brings us to Reimers et. al. [3],
+  where they further expand SBERT models by doing the following:
+    1. Produce Distilled Models (significantly reduced number of parameters)
+    2. Finetune models on Multiple Languages to bring same words from multiple languages in the same vector space. 
+  - Additionally, for model selection, we select the following 4 models for hyperparameter tuning, among which, we can endorse
+  the findings of Reimers et. al. where they say - "Even though SBERT-nli-stsb was trained on the STSbenchmark train set,
+  we observe the best performance by SBERT-paraphrase, which was not trained with any STS dataset.
+  Instead, it was trained on a large and broad paraphrase corpus, mainly derived from Wikipedia, which generalizes well to various topics."
+    1. `sentence-transformers/distilroberta-base-paraphrase-v1`
+    2. `sentence-transformers/stsb-distilroberta-base-v2`
+    3. `sentence-transformers/distilbert-base-nli-stsb-quora-ranking`
+    4. `distilbert-base-nli-mean-tokens`
+  - As a result of our hyperparameter tuning for model selection, `sentence-transformers/distilroberta-base-paraphrase-v1` indeed
+  topped our list, and hence, the further hyperparameter tuning was done using the same model.
 
-- #### TODO Report top 3 articles referencing the im implementation you will be using
-- #### A Sentence-level Hierarchical BERT Model for Document Classification with Limited Labelled Data (https://arxiv.org/pdf/2106.06738.pdf)
-    - Hierarchical BERT to extract document representation of whole abstract
-- #### BERTopic: Neural topic modeling with a class-based TF-IDF procedure (https://arxiv.org/abs/2203.05794)
-- #### Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks (https://arxiv.org/pdf/1908.10084.pdf)
-  - https://github.com/UKPLab/sentence-transformers
-- #### Influence of various text embeddings on clustering performance in NLP (https://arxiv.org/pdf/2305.03144.pdf)
-  - Extract CLS (intended for classification purposes), Average (pooler) state and apply clustering on it
+### Top articles / papers / implementations referred:
+- #### 1. BERTopic: Neural topic modeling with a class-based TF-IDF procedure (https://arxiv.org/abs/2203.05794)
+  - Library Documentation - https://maartengr.github.io/BERTopic/getting_started/quickstart/quickstart.html
+- #### 2. Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks (https://arxiv.org/pdf/1908.10084.pdf)
+  - Library Documentation - https://github.com/UKPLab/sentence-transformers
+- #### 3. Making Monolingual Sentence Embeddings Multilingual using Knowledge Distillation (https://arxiv.org/abs/2004.09813)
+- #### 4. Influence of various text embeddings on clustering performance in NLP (https://arxiv.org/pdf/2305.03144.pdf)
+  
 
-
-### EDA
+## EDA
 
     - TODO Perform exploratory data analysis to understand the structure and characteristics of the dataset.
 	- average sentences (512 token multiples) per abstract
 	- average number of words per abstract
     - explore and do EDA based on certain fields
 
-### Data Preprocessing
+## Data Preprocessing
 
 - The input text is the abstract of scientific papers. So, I'd assume use of stop words serves meaningful purpose, and
 therefore shouldn't be removed before inference from transformer models. Although, I remove stop words when CountVectorizer is called.
@@ -57,8 +108,8 @@ using the full abstract text with basic cleaning as covered in previous step.
 corpus, therefore, there might is no need for us to handle OOV words explicitly. Except, where I started seeing some irrelevant words / symbols 
 making up the part of the topic labels. Then I can consider removing such symbols / tokens.
 
-### Train classifier
-#### - Model choice steps
+## Train a Classifier
+### - Model choice steps
     - Filter bert models for "Feature Extraction" category
     - Model size
     - Inference time
@@ -73,21 +124,29 @@ making up the part of the topic labels. Then I can consider removing such symbol
         - (use hugging face for that
         - https://huggingface.co/models?library=tf&language=en&license=license:apache-2.0&sort=downloads&search=bert-base )
 
-### Evaluate the model's performance on the validation set using appropriate metrics.
+## Performance Evaluation 
+- Evaluate the model's performance on the validation set using appropriate metrics.
 
-### Perform hyperparameter tuning or model selection to improve the model's performance.
+## Hyperparameter Tuning 
+- Perform hyperparameter tuning or model selection to improve the model's performance.
 ![img.png](resources/img.png)
 The image above shows `cluster_selection_eps of 0.2`, and `min_cluster_size of 200, and 600` contributing to `higher coherence score of 0.6 and above`.
 
-### Conclude your findings in a final report When choosing models
+## Conclusions
+- Conclude your findings in a final report When choosing models
 
     - please use TensorFlow or Keras based.
 
-### Data visualization to communicate your analysis
+## Data Visualizations
 
-### Issues faced
+## Issues faced
 - Installation related issues
 - Issue with mounting GPU to docker container [unresolved]
 - Issues with extracting Embeddings for Clustering, the model, size, and time limit considerations, computations limits on local machine
 - Issues while installing cuML library
 - Issues faced while trying evaluation metrics from OCTIS
+- GPU memory leaks and inability to proceed with finetuning of larger datasets we selected - datasets 1, 2, 3, 4
+  - Although I did manage to train 1 model on dataset 1, for which, the training data is approx 40% of the original datset.
+    - That too was achieved by only reducing precision of embeddings to float16.
+    - Clearing GPU context memory after intermediate steps of dimensionality reduction, and clustering, but not as much for bigger datasets.
+- Difficulty in reproducing BERTopic results, at least in our case, due to using GPU based computations across 80% processing. 
