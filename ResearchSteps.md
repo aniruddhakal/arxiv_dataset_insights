@@ -1,11 +1,5 @@
-- When choosing models please use TensorFlow or Keras based.
-
-### Deliverable
-
-- A GitHub repository with production ready code and a comprehensive README
-- [Optional] Data visualization to communicate your analysis
-
 ## Use abstracts for classification and subject categories for class association.
+
 
 ## Research Steps
 1. [Literature Review](#literature-review)
@@ -18,6 +12,7 @@
 1. [Conclusions](#conclusions)
 1. [Data Visualizations](#data-visualizations)
 1. [Issues Faced](#issues-faced)
+
 
 ## Literature Review
   - Classifying documents into unknown number of classes and figuring out the optimal number of classes is majorly
@@ -62,6 +57,12 @@
     4. `distilbert-base-nli-mean-tokens`
   - As a result of our hyperparameter tuning for model selection, `sentence-transformers/distilroberta-base-paraphrase-v1` indeed
   topped our list, and hence, the further hyperparameter tuning was done using the same model.
+  - The key implementation we use for topic modeling is from offered by Grootendorst et. al. [1] - BERTopic. The framework offers the best of all the worlds
+  by combining SBERT embeddings, whose dimensionality is then reduced by using UMAP or any other supported Dimensionality Reduction technique. The HDBSCAN algorithm
+  then creates hierarchical clusters, where for each cluster, all documents within the same cluster are rather treated as a single document for further c-tf-idf vectorization.
+  - The framework not only allows us to use any swappable components (Embedding model, Dimensionality Reduction, Clustering and Topic Reduction) but it also offers
+  some tools for interpreting and visualizing topics. Hence, in our study, we choose to test this framework with combinations of appropriate hyperparameters
+  selected based on dataset EDA and knowledge referenced from other cited sources.
 
 ### Top articles / papers / implementations referred:
 - #### 1. BERTopic: Neural topic modeling with a class-based TF-IDF procedure (https://arxiv.org/abs/2203.05794)
@@ -70,7 +71,7 @@
   - Library Documentation - https://github.com/UKPLab/sentence-transformers
 - #### 3. Making Monolingual Sentence Embeddings Multilingual using Knowledge Distillation (https://arxiv.org/abs/2004.09813)
 - #### 4. Influence of various text embeddings on clustering performance in NLP (https://arxiv.org/pdf/2305.03144.pdf)
-  
+
 
 ## EDA
 
@@ -78,6 +79,7 @@
 	- average sentences (512 token multiples) per abstract
 	- average number of words per abstract
     - explore and do EDA based on certain fields
+
 
 ## Data Preprocessing
 
@@ -108,6 +110,7 @@ using the full abstract text with basic cleaning as covered in previous step.
 corpus, therefore, there might is no need for us to handle OOV words explicitly. Except, where I started seeing some irrelevant words / symbols 
 making up the part of the topic labels. Then I can consider removing such symbols / tokens.
 
+
 ## Train a Classifier
 ### - Model choice steps
     - Filter bert models for "Feature Extraction" category
@@ -124,20 +127,25 @@ making up the part of the topic labels. Then I can consider removing such symbol
         - (use hugging face for that
         - https://huggingface.co/models?library=tf&language=en&license=license:apache-2.0&sort=downloads&search=bert-base )
 
+
 ## Performance Evaluation 
 - Evaluate the model's performance on the validation set using appropriate metrics.
+
 
 ## Hyperparameter Tuning 
 - Perform hyperparameter tuning or model selection to improve the model's performance.
 ![img.png](resources/img.png)
 The image above shows `cluster_selection_eps of 0.2`, and `min_cluster_size of 200, and 600` contributing to `higher coherence score of 0.6 and above`.
 
+
 ## Conclusions
 - Conclude your findings in a final report When choosing models
 
     - please use TensorFlow or Keras based.
 
+
 ## Data Visualizations
+
 
 ## Issues faced
 - Installation related issues

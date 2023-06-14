@@ -1,0 +1,35 @@
+logging_dir: "../logs"
+logfile_name: "classifier.txt"
+logging_level: "DEBUG"
+
+study_name: "classifier_dataset4_study1"
+study_storage_filename: "classifier_dataset4_finetuning.sql"
+
+dataset_path: "../../../dataset"
+models_path: "../../../models"
+
+dataset_index: 4
+n_trials: 336
+
+# model settings
+input_size: 768
+num_classes: 176
+
+label_transformer: "multilabel_binarizer.pkl"
+
+hyperparameters:
+  model_name: [
+    'sentence-transformers/distilroberta-base-paraphrase-v1',
+  ]
+
+  batch_size: [768, 1024, 2048, 4096, 8192, 16384, 32768]
+  n_epochs: [80]
+  learning_rate: [1e-3, 2e-3, 3e-3, 4e-3]
+
+  # scheduler
+  scheduler_step_size: [5, 15, 25]
+  scheduler_gamma: [0.02, 0.1, 0.2, 0.3]
+
+  classifier_model_name: [
+    'dense'
+  ]
