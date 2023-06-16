@@ -1,0 +1,18 @@
+logging_dir: "../logs"
+logfile_name: "classifier_evaluator.txt"
+logging_level: "DEBUG"
+
+dataset_path: "../../../dataset"
+models_path: "../../../models"
+
+optuna_study_name: "classifier_dataset4_study1"
+
+dataset_index: 4
+
+# model settings
+label_transformer: "multilabel_binarizer.pkl"
+transformer_model_name: 'sentence-transformers/distilroberta-base-paraphrase-v1'
+num_classes: 176
+input_size: 768
+
+batch_size: 1024

@@ -27,8 +27,8 @@ from util import *
 class AbstractClassificationTrainer:
     def __init__(self, config: dict, logger: Logger):
         self.config = config
-        self.study_name = config['study_name']
-        self.study_storage_name = config['study_storage_filename']
+        self.study_name = config.get('study_name')
+        self.study_storage_name = config.get('study_storage_filename')
 
         self.dataset_path = Path(self.config['dataset_path'])
         self.models_path = Path(self.config['models_path'])
@@ -52,7 +52,7 @@ class AbstractClassificationTrainer:
 
         self.hyperparameters = None
 
-        label_transformer_name = self.config['label_transformer']
+        label_transformer_name = self.config.get('label_transformer')
         self.multilabel_binarizer = None
         with open(self.models_path / label_transformer_name, 'rb') as f:
             self.multilabel_binarizer = pickle.load(f)
