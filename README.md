@@ -12,6 +12,9 @@
 - [TODO Inference App / Endpoint](#inference-app--endpoint)
 - [TODO Model Choice Decisions](#model-choice-decisions)
 - [TODO Comprehensive Documentation]()
+- [Running Classifier Evaluations](#running-classifier-evaluations)
+  - [Evaluator YAML Configuration](#evaluator-yaml-configuration)
+  - [Key YAML Elements Explained](#key-yaml-elements-explained)
 
 
 ### Description
@@ -74,3 +77,49 @@ TODO
    
 ### References
 1. BERTopic - https://maartengr.github.io/BERTopic/
+
+### Running Classifier Evaluations
+- Classifier Evaluator program is available at location - `<project_root>/apps/classifier/src/classifier_evaluator.py`
+- Evaluator uses `yaml` config file
+
+- Here's how you run the example evaluations
+```bash
+# example for dataset4
+# assuming you are at the project root which is inside <arxiv_dataset_insights> directory
+cd apps/classifier/src/
+python classifier_evaluator.py ../config/evaluator_dataset5.yml
+```
+
+- Some evaluator results can be seen in these log files:
+  - Evaluations for dataset 4 - `./apps/classifier/src/classifier_evaluator_dataset4.txt-1762023-195325.txt`
+  - Evaluations for dataset 5 - `./apps/classifier/src/classifier_evaluator_dataset5.txt-1762023-195732.txt`
+
+#### Evaluator YAML Configuration
+```yaml
+logging_dir: "../logs"
+logfile_name: "classifier_evaluator_dataset5.txt"
+logging_level: "INFO"
+
+dataset_path: "../../../dataset"
+models_path: "../../../models"
+
+# This indicates the model chosen for evaluations is the best
+# model saved during specified Optuna hyperparameter tuning study.
+optuna_study_name: "classifier_dataset4_study1"
+
+dataset_index: 5
+
+# model settings
+label_transformer: "multilabel_binarizer.pkl"
+transformer_model_name: 'sentence-transformers/distilroberta-base-paraphrase-v1'
+num_classes: 176
+input_size: 768
+
+batch_size: 1024
+```
+#### Key YAML Elements Explained
+- `optuna_study_name`: This indicates the model chosen for evaluations is the best
+model saved during specified Optuna hyperparameter tuning study.
+- `dataset_index` - Checkout section [Dataset Creation](#dataset-creation) on how datasets are created.
+- `label_transformer` - name of label_transformer that is present with the same name under `models_path` directory.
+This model is of type `sklearn.preprocessing.MultiLabelBinarizer` and supports 176 unique classes extracted from `categories` from the original arxiv dataset.

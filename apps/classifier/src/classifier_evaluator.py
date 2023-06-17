@@ -1,3 +1,5 @@
+import gc
+
 from sklearn.preprocessing import Binarizer
 
 from abstract_classifier_trainer import *
@@ -59,11 +61,10 @@ class Evaluator:
 
                 # Forward pass
                 outputs = model(inputs)
-                predictions.extend(outputs.tolist())
 
                 # Compute the loss
                 loss = criterion(outputs, labels)
-                # predictions.extend(outputs.tolist())
+                predictions.extend(outputs.tolist())
 
                 validation_loss += loss.item()
 
@@ -77,13 +78,26 @@ class Evaluator:
         model.load_state_dict(torch.load(self.model_file, map_location=torch.device("cpu")))
         return model
 
-    def evaluate_split(self, split: str):
-        self.logger.info(f"Running evaluations for {split} split")
+    def evaluate_split(self, split: str, thresholds: List[float] = None, tops: List[int] = None):
+        """
+        Calculate Top-N-Overlaps accuracy using various threshold levels
+        :param split: Split name - 'train', 'validation', 'test'
+        :param thresholds: Probability threshold - valid values from 0.0 to 1.
+        :param tops: List to test Top N elements accuracy - valid values from 1 to 176 (number of labels), max recommended is 4.
+        :return:
+        """
+        if thresholds is None:
+            thresholds = [0.1]
+
+        if tops is None:
+            tops = [1]
+
+        self.logger.info(f"Running evaluations for dataset: {self.dataset_index} split: {split}")
 
         split_embeddings = self.trainer.extract_or_load_embeddings(split_name=split)
 
         dataset = self.trainer.load_dataset(split=split, cache=False, dataset_index=self.dataset_index)
-        labels =self.trainer.transform_labels(dataset['categories_list'])
+        labels = self.trainer.transform_labels(dataset['categories_list'])
         self.logger.debug(f"Loaded dataset labels")
 
         del dataset
@@ -99,16 +113,24 @@ class Evaluator:
 
         loss, predictions, loop_y = self.inference_loop(model=model, dataloader=dataloader)
 
-        self.logger.debug(f"Running evaluations")
-        scores_dict = self.trainer.run_evaluations(split=split, labels=loop_y, predictions=predictions)
+        loop_y = np.array(loop_y)
+        predictions = np.array(predictions)
 
-        self.logger.info(f"Scores for {split} split: {scores_dict}")
+        gc.collect()
+
+        self.logger.debug(f"Running evaluations")
+        # scores_dict = self.trainer.run_evaluations(split=split, labels=loop_y, predictions=predictions)
+        # self.logger.info(f"Scores for {split} split: {scores_dict}")
+
+        for threshold in thresholds:
+            for top in tops:
+                self.top_n_accuracy(labels=loop_y, predictions=predictions, threshold=threshold, top=top)
 
         del model
         torch.cuda.empty_cache()
         gc.collect()
 
-    def top_n_accuracy(self, labels, predictions, range_start: int=None, range_end: int=None, threshold=0.1, top=1):
+    def top_n_accuracy(self, labels, predictions, range_start: int = None, range_end: int = None, threshold=0.1, top=1):
         if range_start == None:
             range_start = 0
 
@@ -121,16 +143,23 @@ class Evaluator:
 
         matches = np.logical_and(labels[range_start:range_end], binary_preds[range_start:range_end])
 
+        # Count the number of matches for each sample
+        match_counts = np.sum(matches, axis=1)
+
         # Calculate the accuracy
-        accuracy = np.mean(np.any(matches, axis=1))
+        accuracy = np.mean(match_counts >= top)
         logger.info(f"Top {top} accuracy: {accuracy} @ threshold {threshold}")
 
     def main(self):
         # load key datasets
-        self.trainer.load_datasets(dataset_index=self.dataset_index, load_test=False)
-        self.evaluate_split('train')
-        self.evaluate_split('test')
-        self.evaluate_split('validation')
+        self.trainer.load_datasets(dataset_index=self.dataset_index)
+
+        tops = [1]
+        thresholds = [0.05, 0.1, 0.2, 0.3]
+
+        self.evaluate_split('train', tops=tops, thresholds=thresholds)
+        self.evaluate_split('validation', tops=tops, thresholds=thresholds)
+        self.evaluate_split('test', tops=tops, thresholds=thresholds)
 
 
 if __name__ == '__main__':

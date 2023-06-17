@@ -1,5 +1,5 @@
 logging_dir: "../logs"
-logfile_name: "classifier_evaluator_dataset4.txt"
+logfile_name: "classifier_evaluator_dataset5.txt"
 logging_level: "INFO"
 
 dataset_path: "../../../dataset"
@@ -7,7 +7,7 @@ models_path: "../../../models"
 
 optuna_study_name: "classifier_dataset4_study1"
 
-dataset_index: 4
+dataset_index: 5
 
 # model settings
 label_transformer: "multilabel_binarizer.pkl"
