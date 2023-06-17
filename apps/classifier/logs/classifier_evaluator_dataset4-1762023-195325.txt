@@ -1,0 +1,16 @@
+2023-06-17 19:53:25,937 - INFO - util.py line: 42 - Logger initialized, Refer Logfile: /mnt/NVMe/workspace/github_projects/arxiv_dataset_insights/apps/classifier/logs/classifier_evaluator.txt-1762023-195325.txt, LogLevel: 20
+2023-06-17 19:53:27,733 - INFO - classifier_evaluator.py line: 95 - Running evaluations for dataset: 4 split: train
+2023-06-17 19:55:16,379 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9570814581828258 @ threshold 0.05
+2023-06-17 19:55:18,355 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9239891900235456 @ threshold 0.1
+2023-06-17 19:55:20,291 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.8627206372622823 @ threshold 0.2
+2023-06-17 19:55:22,178 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.8017260030289189 @ threshold 0.3
+2023-06-17 19:55:22,503 - INFO - classifier_evaluator.py line: 95 - Running evaluations for dataset: 4 split: validation
+2023-06-17 19:55:36,155 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9434600800878841 @ threshold 0.05
+2023-06-17 19:55:36,435 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9044172366136292 @ threshold 0.1
+2023-06-17 19:55:36,704 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.836975973634785 @ threshold 0.2
+2023-06-17 19:55:36,968 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.7737605868386548 @ threshold 0.3
+2023-06-17 19:55:37,294 - INFO - classifier_evaluator.py line: 95 - Running evaluations for dataset: 4 split: test
+2023-06-17 19:56:04,097 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9432201720547193 @ threshold 0.05
+2023-06-17 19:56:04,642 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9044182253177612 @ threshold 0.1
+2023-06-17 19:56:05,167 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.8373049334599287 @ threshold 0.2
+2023-06-17 19:56:05,687 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.7738168748187937 @ threshold 0.3

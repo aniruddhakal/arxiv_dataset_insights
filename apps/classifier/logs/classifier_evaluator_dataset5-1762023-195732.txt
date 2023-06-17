@@ -1,0 +1,16 @@
+2023-06-17 19:57:32,797 - INFO - util.py line: 42 - Logger initialized, Refer Logfile: /mnt/NVMe/workspace/github_projects/arxiv_dataset_insights/apps/classifier/logs/classifier_evaluator_dataset5.txt-1762023-195732.txt, LogLevel: 20
+2023-06-17 19:57:34,839 - INFO - classifier_evaluator.py line: 95 - Running evaluations for dataset: 5 split: train
+2023-06-17 19:57:52,658 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9568288575733405 @ threshold 0.05
+2023-06-17 19:57:52,796 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9236993707347336 @ threshold 0.1
+2023-06-17 19:57:52,933 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.8632190020384649 @ threshold 0.2
+2023-06-17 19:57:53,065 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.801675086413188 @ threshold 0.3
+2023-06-17 19:57:53,222 - INFO - classifier_evaluator.py line: 95 - Running evaluations for dataset: 5 split: validation
+2023-06-17 19:58:00,735 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9533191527076132 @ threshold 0.05
+2023-06-17 19:58:00,891 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9185411681290437 @ threshold 0.1
+2023-06-17 19:58:01,051 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.8532393866879376 @ threshold 0.2
+2023-06-17 19:58:01,196 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.7897456350261455 @ threshold 0.3
+2023-06-17 19:58:01,495 - INFO - classifier_evaluator.py line: 95 - Running evaluations for dataset: 5 split: test
+2023-06-17 19:58:09,544 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9527430647877337 @ threshold 0.05
+2023-06-17 19:58:09,727 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.9178498626251883 @ threshold 0.1
+2023-06-17 19:58:09,900 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.8531418948861118 @ threshold 0.2
+2023-06-17 19:58:10,060 - INFO - classifier_evaluator.py line: 151 - Top 1 accuracy: 0.7919702206859878 @ threshold 0.3

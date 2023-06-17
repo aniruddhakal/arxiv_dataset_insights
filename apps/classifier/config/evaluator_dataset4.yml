@@ -1,5 +1,5 @@
 logging_dir: "../logs"
-logfile_name: "classifier_evaluator_dataset4.txt"
+logfile_name: "classifier_evaluator_dataset4"
 logging_level: "INFO"
 
 dataset_path: "../../../dataset"
