@@ -9,7 +9,7 @@
 - [Performance Evaluations](#performance-evaluations)
 
 
-### How to locate all fine-tuning studies and Visualize with Optuna Dashboard
+## How to locate all fine-tuning studies and Visualize with Optuna Dashboard
 - Navigate to the directory where all Optuna finetuning studies are saved, and list all `.sql` files.
 
 ```bash
@@ -41,7 +41,7 @@ optuna-dashboard sqlite:///classifier_dataset4_finetuning.sql
 - On successful launch, open link `http://127.0.0.1:8080/dashboard/studies/1` within your browser
 
 
-### Hyperparameter Tuning for Topic Modeling
+## Hyperparameter Tuning for Topic Modeling
 #### Running Hyperparameter Fine-tuning for Topic Modeling
   ```bash
    cd <project_root>/apps/bertopic_trainer
@@ -72,21 +72,61 @@ optuna-dashboard sqlite:///classifier_dataset4_finetuning.sql
 Image: The image shows few selected (highlighted as blue) trials that contribute to best (lesser the better) objective (BCELoss) scores.
 
 
-### Model Choice Decisions
-### TODO
-    - Filter bert models for "Feature Extraction" category
-    - Model size
-    - Inference time
-    - Number of attention heads
-    - Arhcitecture (e.g. SBERT)
-    - Specific downstream tasks / datasets trained / finetuned on
-    - Domain specific models suitable for arxiv dataset feature extraction
-    - Model's documentation - model card, performance, intended use, limitations or considerations
-    - Experiment and evaluate
+## Model Choice Decisions
+- For model selection, I selected the following 5 models for hyperparameter tuning.
+  1. `sentence-transformers/distilroberta-base-paraphrase-v1`
+  1. `sentence-transformers/stsb-distilroberta-base-v2`
+  1. `sentence-transformers/distilbert-base-nli-stsb-quora-ranking`
+  1. `distilbert-base-nli-mean-tokens`
+  1. `allenai/scibert_scivocab_uncased`
+- The notion behind choosing these models for study were among (but not limited to) the following:
+  - `Smaller models size, less parameters`: Distilled BERT and RoBERTa models have approx 30M parameters as compared to the original 
+  BERT or RoBERTa with 150M to 300M+ parameters. This not only helped me do faster inference, and save
+  significant time on computations, but also allowed me to run experiments in less amount of time and
+  computational resources.
+  - `Underlying Task and Dataset the model is finetuned on`:
+    - The type of the downstream task for which the model is finetuned
+    for was a crucial aspect. During literature study, I covered that when it comes to comparing similarity between
+    sentences, BERT isn't as efficient. So the researchers of SBERT came up with Siamese architecture based
+    BERT fine-tuning on NLI task.
+    - Similarly, I also decided to try models tuned for `paraphrase` task as per Reimers et. al.[3].
+    - Finding a distilled model fine-tuned on Arxiv or similar whitepaper dataset which covers such a 
+    wider variety of domains would have been an ideal choice. Although, Wikipedia dataset is one of such
+    that comes handy for generalization across multiple domains. And for a reason, that Wikipedia is still well written
+    citing to authentic references, often reviewed by experts makes it an ideal choice for this task.
+    - Reimers et. al. in [3] fine-tune distilroberta model on paraphrase task mainly derived from Wikipedia, which they
+    claim performs the best across all of their.
+    - Further to that, even though the current task dataset is English only. Reimers et. al.'s their goal is also to demonstrate
+    the effectiveness of their approach across 50+ languages while also bringing sentences from multiple languages into
+    the same vector space after translation.
+  - `Optimal finetuing of the baseline architecture`:
+    - The research on RoBERTa claims that the original BERT model wasn't trained
+    to its full potential, leaving much more room for improvements, and hence, researchers came up with RoBERTa.
+    - RoBERTa is still BERT architecture with most of the parameters exactly the same.
+    - It has lightly different training methodology, which allows model to learn on 512 token length long sequences
+    across the whole training process.
+    - Which grabs my attention, creating curiosity to test effect of that different training strategy. So, I decided
+    to add RoBERTa based distilled models to my study as well. 
+  
+- Among four models, I can endorse the findings of Reimers et. al. [3] where they say - "Even though SBERT-nli-stsb was trained
+on the STSbenchmark train set, we observed the best performance by SBERT-paraphrase, which was not trained with any STS dataset.
+Instead, it was trained on a large and broad paraphrase corpus, mainly derived from Wikipedia,
+which generalizes well to various topics". My hyperparameter tuning results explain why.
 
-    - a suitable NLP model for text classification
-        - (use hugging face for that
-        - https://huggingface.co/models?library=tf&language=en&license=license:apache-2.0&sort=downloads&search=bert-base )
+- The following results are from Optuna study storage file - `distilled_model_choice_experiments_dataset5.sql`
+  - The following image showing `distilroberta-base-paraphrase-v1`, and `distilbert-base-nli-mean-tokens` contributing to the higher
+  coherence score. Optuna study name `distilled_model_selection_sample_dataset5`.
+  ![model_selection_1.png](resources/model_selection_1.png "Image: Model Selection 1.png")
+  - Another image from study `distilled_model_selection_sample_dataset5_2` showing that `paraphrase` model still outperforms in coherence score when compared with
+  yet another model fine-tuned on Scientific Papers - `allenai\scibert_scivocab_uncased`. On the left is `paraphrase` model
+  from Reimers et. al. [3] which not only contributes to high coherence score, but also significantly outperforms other models.
+  - ![model_selection_2.png](resources/model_selection_2.png)
+  - Yet another study named `distilled_model_selection_sample_dataset5_3` performed to break performance ties between models
+  `distilbert-base-nli-mean-tokens` and `distilroberta-base-paraphrase-v1`. This image shows that the later `paraphrase` model
+  has consistently contributed to all top scores, and not a single score among the top scores were attributed to `distilbert-base-nli-mean-tokens` model.
+  ![model_selection_3.png](resources/model_selection_3.png)
+  - These findings helped me choose `paraphrase` model for further fine-tuning of BERTopic's key intermediate pipelines,
+  such as dimensionality reduction, and hierarchical clustering.
 
 ## Performance Evaluations
 - BERTopic and Classifier Evaluations & Results are covered in [this section of ReadMe.md file](ReadMe.md#running-classifier-evaluations)

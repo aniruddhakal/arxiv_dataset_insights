@@ -98,6 +98,7 @@ input_size: 768
 
 batch_size: 1024
 ```
+
 #### Key YAML Elements Explained
 - `optuna_study_name`: This indicates the model chosen for evaluations is the best
 model saved during specified Optuna hyperparameter tuning study.
@@ -126,7 +127,6 @@ This model is of type `sklearn.preprocessing.MultiLabelBinarizer` and supports 1
 |          0.2          |         0.8373         |
 |          0.3          |         0.7738         |
 
-
 ##### Dataset 5
 |       Threshold       | Top-1-Overlap Accuracy |
 |:---------------------:|:----------------------:|
@@ -154,9 +154,17 @@ This model is of type `sklearn.preprocessing.MultiLabelBinarizer` and supports 1
 ## Conclusions
 ### TODO
 - Conclude findings when choosing models
+- Conclusions on model choice
+- Conclusions on BERTopic technique, and choosing best number of topics
+- Conclusions on reproducibility of BERTopic, esp. on GPU
+- Conclusions on dim reduction, and clustering algorithm's maturity on ability to work in batches on GPU's and not occupying the whole memory.
+- Conclusions on Classifier and results, and need for better metrics
+#### TODO choose best number of topics. 
+
 
 ## Data Visualizations
 ### TODO
+
 
 ## Issues faced
 

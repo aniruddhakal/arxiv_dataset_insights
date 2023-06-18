@@ -62,7 +62,7 @@
   endorse
   the findings of Reimers et. al. where they say - "Even though SBERT-nli-stsb was trained on the STSbenchmark train
   set,
-  I observed the best performance by SBERT-paraphrase, which was not trained with any STS dataset.
+  we observed the best performance by SBERT-paraphrase, which was not trained with any STS dataset.
   Instead, it was trained on a large and broad paraphrase corpus, mainly derived from Wikipedia, which generalizes well
   to various topics."
     1. `sentence-transformers/distilroberta-base-paraphrase-v1`
