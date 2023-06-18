@@ -3,7 +3,20 @@
 ## The work is still under progress
 
 
-### All Steps
+## Documentation Navigation
+- `ReadMe.md` (you are here)
+  - Covers details on Installing requirements, and initializing dataset.
+  - Then redirects you to `ResearchSteps.md` file.
+- `ResearchSteps.md`
+  - Covers all steps from literature review, data preprocessing, EDA and insights.
+  - Then redirects you to `HyperparameterTuning.md` file.
+- `HyperparameterTuning.md`
+  - Covers Hyperparameters Tuning in details, covering several studies and including decisions to continue with certain hyperparameters,
+  for both Topic Model and Classifier.
+  - Then redirects you back to this page to view Evaluations details, where later sections continue with inference app, conclusions, and more.
+
+
+## All Steps
 - [[TODO] Description](#description)
 - [Assumed Requirements](#assumed-requirements)
 - [Initialize Dataset](#steps-to-initialize-dataset)
