@@ -7,7 +7,7 @@
 - [[TODO] Description](#description)
 - [Assumed Requirements](#assumed-requirements)
 - [Initialize Dataset](#steps-to-initialize-dataset)
-- [Research Steps](ResearchSteps.md)
+- [Research Steps](#research-steps)
 - [Running Classifier Evaluations](#running-classifier-evaluations)
   - [Evaluator YAML Configuration](#evaluator-yaml-configuration)
   - [Key YAML Elements Explained](#key-yaml-elements-explained)
@@ -41,8 +41,9 @@ TODO
     docker-compose up init_database
     ```
 
-### Inference App / Endpoint
-- ##### TODO
+### Research Steps
+Research steps are comprehensively covered in file [ResearchSteps.md](ResearchSteps.md)
+Don't worry, you'll be redirected to section after this one.
 
 
 ### Running Classifier Evaluations
@@ -132,6 +133,9 @@ This model is of type `sklearn.preprocessing.MultiLabelBinarizer` and supports 1
 |          0.2          |         0.8531         |
 |          0.3          |         0.7919         |
 
+
+## Inference App / Endpoint
+- ##### TODO
 
 
 ## Conclusions
