@@ -153,6 +153,7 @@ This model is of type `sklearn.preprocessing.MultiLabelBinarizer` and supports 1
 
 ## Conclusions
 ### TODO
+- Data Exploration shows that Hierarchical Label, and hence, topic association may not be the best possible solution for the problem at hand. 
 - Conclude findings when choosing models
 - Conclusions on model choice
 - Conclusions on BERTopic technique, and choosing best number of topics

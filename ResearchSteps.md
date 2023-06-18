@@ -6,6 +6,8 @@
     1. [Top Articles / Papers / Implementations Referred](#top-articles--papers--implementations-referred)
 1. [Data Preprocessing](#data-preprocessing)
 1. [EDA and Creating Train, Validation, Test splits](#eda-and-creating-train-validation-test-splits)
+   1. [Label Associations](#label-associations)
+   1. [Text Lengths and Assumptions for Outliers](#text-lengths-and-assumptions-for-outliers)
    1. [Creating Datasets for Training, Validation, and Testing Purposes](#creating-datasets-for-training-validation-and-testing-purposes)
 1. [Hyperparameter Tuning](#hyperparameter-tuning)
 
@@ -137,20 +139,34 @@
 
 ## EDA and Creating Train, Validation, Test splits
 
-##### Assumptions for Outliers
-    - Outlier articles are 22 where the way they were treated as was based on the word count for their abstracts > 500 words (this is before tokenization).
-        - Pretrained BERT model was only trained on 512 tokens for single sequence
-        - 99.99% articles in the dataset have abstracts less than 500 tokens
-        - Therefore, considering using advanced techniques to accommodate for sequence length longer than 512 for 0.000009742% of articles would be a step too far for this exercise.
-        - Hence, skipping these 22 articles from initial training, test, validation datasets.
-        - Although, we can include this as a separate outlier dataset, where we do the inference using only initial N number of words and cutting off threshold at 512 tokens max.
+### EDA
 
-    - Also treating 25th percentile of 25th percentile of word counts, where first 25th percentile was around 48 words, and 25th percentile of that was 27 words.
-        - This would also help us avoid too much sparsity in embeddings.
-        - Most of the abstracts in this threshold were just single sentence abstracts, with extremes being single word.
-        - Some of them were invitations for papers, which are not really abstracts.
+#### Label Associations
+- In EDA as I explored the labels in tree hierarchy fashion. We can see that `physics.atom-ph` is associated
+across many different top level labels such as - `nucl-th`, `nucl-ex`, `hep-lat`. Or even labels at the parent level
+to `physics.atom-ph` don't follow consistent hierarchy either. Which does offers me insights that hierarchical topic / label
+association seems alright, but may not be the best / complete solution to the problem at hand.
+- ![img.png](resources/eda_labels_hierarchy_overlaps.png)
+
+#### Text Lengths and Assumptions for Outliers
+- Outlier articles are 22 where the way they were treated as was based on the word count for their abstracts > 500 words (this is before tokenization).
+    - Pretrained BERT model was only trained on 512 tokens for single sequence
+    - 99.99% articles in the dataset have abstracts less than 500 tokens
+    - Therefore, considering using advanced techniques to accommodate for sequence length longer than 512 for 0.000009742% of articles would be a step too far for this exercise.
+    - Hence, skipping these 22 articles from initial training, test, validation datasets.
+    - Although, we can include this as a separate outlier dataset, where we do the inference using only initial N number of words and cutting off threshold at 512 tokens max.
+
+- Also treating 25th percentile of 25th percentile of word counts, where first 25th percentile was around 48 words, and 25th percentile of that was 27 words.
+    - This would also help us avoid too much sparsity in embeddings.
+    - Most of the abstracts in this threshold were just single sentence abstracts, with extremes being single word.
+    - Some of them were invitations for papers, which are not really abstracts.
 
 ### Creating Datasets for Training, Validation, and Testing Purposes
+- As I found 176 unique categories, selecting some samples from each category was one of the straight forward ways to ensure
+stratification across all categories for all splits - train, validation, and test.
+- The following steps state scripts, and configurations used to create 5 datasets.
+- The dataset 5 was especially created for rapid initial experimentation with each step containing only 5% of the whole data.
+
 ##### Launch MongoDB Docker Instance
 ```bash
 cd <project_root>
