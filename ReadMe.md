@@ -4,21 +4,23 @@
 
 
 ### All Steps
-- [Initialize Dataset (MongoDB)](#steps-to-initialize-dataset)
+- [[TODO] Description](#description)
+- [Assumed Requirements](#assumed-requirements)
+- [Initialize Dataset](#steps-to-initialize-dataset)
 - [Research Steps](ResearchSteps.md)
-- [[TODO] Inference App / Endpoint](#inference-app--endpoint)
 - [Running Classifier Evaluations](#running-classifier-evaluations)
   - [Evaluator YAML Configuration](#evaluator-yaml-configuration)
   - [Key YAML Elements Explained](#key-yaml-elements-explained)
-- [Conclusions](#conclusions)
-- [Data Visualizations](#data-visualizations)
+- [[TODO] Inference App / Endpoint](#inference-app--endpoint)
+- [[TODO] Conclusions](#conclusions)
+- [[TODO] Data Visualizations](#data-visualizations)
 - [Issues Faced](#issues-faced)
 
 
 ### Description
 TODO
 
-### Assumed requirements
+### Assumed Requirements
 - All the requirements to run the corresponding sub-modules are provided within requirements.txt file at the root of that module.
   - Hence, consider creating python virtual environment and install all the requirements from requirements.txt file.
 - **[skip this step]** Docker is installed, and appropriate permissions are granted for running this project.
@@ -39,39 +41,9 @@ TODO
     docker-compose up init_database
     ```
 
-### EDA and Creating Train, Validation, Test splits
-1. Launch jupyter notebooks at project root directory
-   ```bash
-   cd <project_root>
-   jupter notebook
-   ```
-1. Run `./apps/notebooks/src/EDA.ipynb`
-   2. Along with some EDA, this notebook also generates Train, Validation, and Test dataset splits. 
-   3. ##### TODO later to be converted to script
-
-
 ### Inference App / Endpoint
 - ##### TODO
 
-### Model Choice Decisions 
-- ##### TODO
-
-
-1. View jupyter notebooks
-   - Launch jupyter notebooks instance
-   ```bash
-   docker-compose up -d notebooks
-   ```
-   
-   - Access it from browser
-   ```
-   http://localhost:8888
-   ```
-   
-    - Unfortunately, I haven't fully figured out how to attach existing GPU to any docker instance, so prefer running jupyter notebooks rather from local machine directly.
-   
-### References
-1. BERTopic - https://maartengr.github.io/BERTopic/
 
 ### Running Classifier Evaluations
 - Classifier Evaluator program is available at location - `<project_root>/apps/classifier/src/classifier_evaluator.py`
@@ -163,10 +135,8 @@ This model is of type `sklearn.preprocessing.MultiLabelBinarizer` and supports 1
 
 
 ## Conclusions
-
-- Conclude your findings in a final report When choosing models
-
-    - please use TensorFlow or Keras based.
+### TODO
+- Conclude findings when choosing models
 
 ## Data Visualizations
 ### TODO
