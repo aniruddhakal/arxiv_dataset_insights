@@ -4,17 +4,15 @@
 
 
 ### All Steps
-- [[In Progress] Research Steps](ResearchSteps.md)
 - [Initialize Dataset (MongoDB)](#steps-to-initialize-dataset)
-- [EDA and Creating Train, Validation, Test splits](#eda-and-creating-train-validation-test-splits)
-- ###### [Currently under progress > Hyperparameter Tuning](#hyperparameter-tuning)
-- [TODO Viewing Finetuning Results with Optuna Dashboard](#viewing-finetuning-results-with-optuna-dashboard)
-- [TODO Inference App / Endpoint](#inference-app--endpoint)
-- [TODO Model Choice Decisions](#model-choice-decisions)
-- [TODO Comprehensive Documentation]()
+- [Research Steps](ResearchSteps.md)
+- [[TODO] Inference App / Endpoint](#inference-app--endpoint)
 - [Running Classifier Evaluations](#running-classifier-evaluations)
   - [Evaluator YAML Configuration](#evaluator-yaml-configuration)
   - [Key YAML Elements Explained](#key-yaml-elements-explained)
+- [Conclusions](#conclusions)
+- [Data Visualizations](#data-visualizations)
+- [Issues Faced](#issues-faced)
 
 
 ### Description
@@ -51,15 +49,6 @@ TODO
    2. Along with some EDA, this notebook also generates Train, Validation, and Test dataset splits. 
    3. ##### TODO later to be converted to script
 
-### Hyperparameter Tuning
-  - Finetuning can be run as follows
-  ```bash
-   cd <project_root>/apps/bertopic_trainer
-   python bertopic_finetuning.py config/bertopic_finetuning_config_dataset_1.yml 
-   ```
-
-### Viewing Finetuning Results with Optuna Dashboard
-- ##### TODO
 
 ### Inference App / Endpoint
 - ##### TODO
@@ -170,3 +159,31 @@ This model is of type `sklearn.preprocessing.MultiLabelBinarizer` and supports 1
 |          0.1          |         0.9178         |
 |          0.2          |         0.8531         |
 |          0.3          |         0.7919         |
+
+
+
+## Conclusions
+
+- Conclude your findings in a final report When choosing models
+
+    - please use TensorFlow or Keras based.
+
+## Data Visualizations
+### TODO
+
+## Issues faced
+
+- Installation related issues
+- Issue with mounting GPU to docker container **[unresolved]**
+- Issues with extracting Embeddings for Clustering, the model, size, and time limit considerations, computations limits
+  on local machine
+- Issues while installing cuML library
+- Issues faced while trying evaluation metrics from OCTIS
+- GPU memory leaks and inability to proceed with fine-tuning of larger datasets I selected - datasets 1, 2, 3, 4
+    - Although I did manage to train 1 model on dataset 1, for which, the training data is approx 40% of the original
+      dataset.
+        - That too was achieved by only reducing precision of embeddings to float16.
+        - Clearing GPU context memory after intermediate steps of dimensionality reduction, and clustering, but not as
+          much for bigger datasets.
+- Difficulty in reproducing BERTopic results, at least in my case. This is potentially due to using GPU based
+  computations across 80% processing.
