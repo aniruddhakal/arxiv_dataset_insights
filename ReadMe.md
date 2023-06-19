@@ -40,13 +40,13 @@ from Arxiv dataset for feature extraction.
 
 ### Assumed Requirements
 
-- All the requirements to run the corresponding sub-modules are provided within requirements.txt file at the root of
+- All the requirements to run the corresponding submodules are provided within requirements.txt file at the root of
   that module.
     - Hence, consider creating python virtual environment and install all the requirements from requirements.txt file.
 - **[skip this step]** Docker is installed, and appropriate permissions are granted for running this project.
     - Plan to use docker for everything was dropped because I couldn't fully figure out how to access GPU from docker
       instance.
-    - Using things through docker containers, would work, but not using GPU would slow things down significantly.
+    - Using things through docker containers would work, but not using GPU would slow things down significantly.
 
 ### Steps to initialize dataset
 
