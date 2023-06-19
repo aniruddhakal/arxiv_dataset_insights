@@ -84,8 +84,8 @@ python classifier_evaluator.py ../config/evaluator_dataset5.yml
 ```
 
 - Some evaluator results can be seen in these log files:
-    - Evaluations for dataset 4 - `./apps/classifier/src/classifier_evaluator_dataset4-1762023-195325.txt`
-    - Evaluations for dataset 5 - `./apps/classifier/src/classifier_evaluator_dataset5-1762023-195732.txt`
+    - Evaluations for dataset 4 - `./apps/classifier/src/logs/classifier_evaluator_dataset4-1762023-195325.txt`
+    - Evaluations for dataset 5 - `./apps/classifier/src/logs/classifier_evaluator_dataset5-1762023-195732.txt`
 
 #### Evaluator YAML Configuration
 
