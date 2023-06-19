@@ -10,3 +10,4 @@ octis==1.12.1
 bertopic
 sentence-transformers
 gensim
+anytree==2.8.0

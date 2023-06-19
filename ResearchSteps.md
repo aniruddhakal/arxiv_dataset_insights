@@ -6,11 +6,10 @@
     1. [Top Articles / Papers / Implementations Referred](#top-articles--papers--implementations-referred)
 1. [Data Preprocessing](#data-preprocessing)
 1. [EDA and Creating Train, Validation, Test splits](#eda-and-creating-train-validation-test-splits)
-   1. [Label Associations](#label-associations)
-   1. [Text Lengths and Assumptions for Outliers](#text-lengths-and-assumptions-for-outliers)
-   1. [Creating Datasets for Training, Validation, and Testing Purposes](#creating-datasets-for-training-validation-and-testing-purposes)
+    1. [Label Associations](#label-associations)
+    1. [Text Lengths and Assumptions for Outliers](#text-lengths-and-assumptions-for-outliers)
+    1. [Creating Datasets for Training, Validation, and Testing Purposes](#creating-datasets-for-training-validation-and-testing-purposes)
 1. [Hyperparameter Tuning](#hyperparameter-tuning)
-
 
 ## Literature Review
 
@@ -142,38 +141,67 @@
 ### EDA
 
 #### Label Associations
+
 - In EDA as I explored the labels in tree hierarchy fashion. We can see that `physics.atom-ph` is associated
-across many different top level labels such as - `nucl-th`, `nucl-ex`, `hep-lat`. Or even labels at the parent level
-to `physics.atom-ph` don't follow consistent hierarchy either. Which does offers me insights that hierarchical topic / label
-association seems alright, but may not be the best / complete solution to the problem at hand.
-- ![img.png](resources/eda_labels_hierarchy_overlaps.png)
+  across many different top level labels such as - `nucl-th`, `nucl-ex`, `hep-lat`. Or even labels at the parent level
+  to `physics.atom-ph` don't follow consistent hierarchy either. Which does offers me insights that hierarchical topic /
+  label
+  association seems alright, but may not be the best / complete solution to the problem at hand.
+  ![eda_labels_hierarchy_overlaps.png](resources/eda_labels_hierarchy_overlaps.png)
+
+#### Top Level Unique Categories
+- Among 176 unique categories, I saw naming pattern.
+- These are some of the examples from 176 unique categories - 'quant-ph', 'physics.flu-dyn', 'acc-phys', 'ao-sci', '
+  math.KT', 'cs.CE', 'q-fin.PM', 'cs.CV', 'cs.MS', 'math.GM'
+- As per the [Arxiv Category Taxonomies](https://arxiv.org/category_taxonomy), even
+  though `cs.CE`, `cs.CV`, `cs.MS`, belong to `Computational Engineering`, `Computer Vision`, and `Mathematical Software`
+  respectively, they still fall under `cs` - `Computer Science` as their major category.
+- And hence, in order to go towards the broader level of categories, I split the names by any symbols, and took first word,
+  to land at 31 unique broader level categories, or 32 if I rather add `q-bio`, and `q-fin` separately, and remove `q`.
+  - Although, issue with this is e.g. if we consider `quant` as top level category, here are two examples where
+  `quant` appears at the beginning of one - `quant-ph`, and in the middle of the other one `cond-mat.quant-gas`.
+- Going through [Arxiv's Online Taxonomies](https://arxiv.org/category_taxonomy) 2nd broad level categories, there are about
+  13 or such 2nd level categories. Although, they don't have everything covered in their taxonomy.
+- Some examples of missing categories from [Arxiv'x Online Taxonomies](https://arxiv.org/category_taxonomy) are `patt`, `solv`, `adap`, `funct`, `bayes` etc.
+- So overall this study suggests that the range between 7 and 30 categories as a broad level categories exploration exercise makes sense.
+- Although, if we want to dive into concept level details, we need to go higher in range for finding the optimal number of topics,
+  hence, I tried ranges all the way up to 1500 and beyond in my experiments.
 
 #### Text Lengths and Assumptions for Outliers
-- Outlier articles are 22 where the way they were treated as was based on the word count for their abstracts > 500 words (this is before tokenization).
+- Outlier articles are 22 where the way they were treated as was based on the word count for their abstracts > 500
+  words (this is before tokenization).
     - Pretrained BERT model was only trained on 512 tokens for single sequence
     - 99.99% articles in the dataset have abstracts less than 500 tokens
-    - Therefore, considering using advanced techniques to accommodate for sequence length longer than 512 for 0.000009742% of articles would be a step too far for this exercise.
+    - Therefore, considering using advanced techniques to accommodate for sequence length longer than 512 for
+      0.000009742% of articles would be a step too far for this exercise.
     - Hence, skipping these 22 articles from initial training, test, validation datasets.
-    - Although, we can include this as a separate outlier dataset, where we do the inference using only initial N number of words and cutting off threshold at 512 tokens max.
+    - Although, we can include this as a separate outlier dataset, where we do the inference using only initial N number
+      of words and cutting off threshold at 512 tokens max.
 
-- Also treating 25th percentile of 25th percentile of word counts, where first 25th percentile was around 48 words, and 25th percentile of that was 27 words.
+- Also treating 25th percentile of 25th percentile of word counts, where first 25th percentile was around 48 words, and
+  25th percentile of that was 27 words.
     - This would also help us avoid too much sparsity in embeddings.
     - Most of the abstracts in this threshold were just single sentence abstracts, with extremes being single word.
     - Some of them were invitations for papers, which are not really abstracts.
 
 ### Creating Datasets for Training, Validation, and Testing Purposes
-- As I found 176 unique categories, selecting some samples from each category was one of the straight forward ways to ensure
-stratification across all categories for all splits - train, validation, and test.
+
+- As I found 176 unique categories, selecting some samples from each category was one of the straight forward ways to
+  ensure
+  stratification across all categories for all splits - train, validation, and test.
 - The following steps state scripts, and configurations used to create 5 datasets.
-- The dataset 5 was especially created for rapid initial experimentation with each step containing only 5% of the whole data.
+- The dataset 5 was especially created for rapid initial experimentation with each step containing only 5% of the whole
+  data.
 
 ##### Launch MongoDB Docker Instance
+
 ```bash
 cd <project_root>
 docker-compose up -d mongodb
 ```
 
 ##### Launch Jupyter Notebook Instance
+
 ```bash
 cd <project_root>/apps/notebooks/src
 
@@ -185,16 +213,18 @@ jupyter notebook
 ```
 
 ##### Run `EDA.ipynb` notebook
+
 - The notebook fetches data from MongoDB
 - Does data exploration, and shows insights through plots
 - Does data pre-processing
-  - Finally, creates 5 datasets with different split ratios as follows
-    - > These are the split ratios. They're interpreted as (train, validation, test)
-      > 1. (40, 20, 40)
-      > 1. (60, 10, 30)
-      > 1. (60, 20, 20)
-      > 1. (70, 10, 20)
-      > 1. (5, 5, 5)
+    - Finally, creates 5 datasets with different split ratios as follows
+        - > These are the split ratios. They're interpreted as (train, validation, test)
+          > 1. (40, 20, 40)
+          > 1. (60, 10, 30)
+          > 1. (60, 20, 20)
+          > 1. (70, 10, 20)
+          > 1. (5, 5, 5)
 
 ## Hyperparameter Tuning
+
 Hyperparameter Tuning is comprehensively covered on [HyperparameterTuning.md Page](HyperparameterTuning.md)
