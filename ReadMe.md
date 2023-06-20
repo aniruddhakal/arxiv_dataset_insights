@@ -88,6 +88,10 @@
   Although, [EDA Notebook in this section](ResearchSteps.md#eda-and-creating-train-validation-test-splits)
   can be used to generate datasets. Please note that, your results could differ due to random sampling from each
   category.
+- Best model for Topic Modeling task, because it was concluded as not getting enough quality out of it, and additionally
+  facing numerous issues like with reproduction, and inability to process bigger datasets due to cuML's algorithm
+  limitations etc.
+- Models for all trials, except for the best classifier trial.
 
 <br>
 
