@@ -46,3 +46,16 @@ services:
       - /dev/nvidia0:/dev/nvidia0
       - /dev/nvidiactl:/dev/nvidiactl
       - /dev/nvidia-uvm:/dev/nvidia-uvm
+
+  inference_app:
+    build:
+      context: apps
+      dockerfile: Dockerfile_ubuntu
+      args:
+        APP_NAME: inference_service
+    command: ['python3.9', 'src/inference_app.py', 'config/inference_config_docker.yml']
+    network_mode: host
+    volumes:
+      - ./logs:/logs
+      - ./models:/models
+      - ./dataset:/dataset

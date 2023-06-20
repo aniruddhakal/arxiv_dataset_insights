@@ -7,7 +7,6 @@ import numpy as np
 import optuna
 import spacy
 import torch
-from custom_bertopic import CustomBERTopic
 from bertopic import BERTopic
 from cuml import HDBSCAN, UMAP
 from datasets import load_dataset
@@ -18,6 +17,7 @@ from optuna.trial import Trial
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 
+from custom_bertopic import CustomBERTopic
 from hyperparameters import BertopicHyperparameters
 from util import *
 

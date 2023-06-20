@@ -53,17 +53,13 @@
   task,
   making it much more faster and easier to find similar sentence pairs.
 - Although, I still face computational challenges trying to extract embeddings from SBERT model variants given the size
-  of the arxiv dataset,
-  hence, I went further exploring options to reduce number of parameters used by the model. Which brings us to Reimers
-  et. al. [3],
-  where they further expand SBERT models by doing the following:
+  of the arxiv dataset, hence, I went further exploring options to reduce number of parameters used by the model. Which
+  brings us to Reimers et. al. [3], where they further expand SBERT models by doing the following:
     1. Produce Distilled Models (significantly reduced number of parameters)
     2. Finetune models on Multiple Languages to bring same words from multiple languages in the same vector space.
 - Additionally, for model selection, I selected the following 4 models for hyperparameter tuning, among which, I can
-  endorse
-  the findings of Reimers et. al. where they say - "Even though SBERT-nli-stsb was trained on the STSbenchmark train
-  set,
-  we observed the best performance by SBERT-paraphrase, which was not trained with any STS dataset.
+  endorse the findings of Reimers et. al. where they say - "Even though SBERT-nli-stsb was trained on the STSbenchmark
+  train set, we observed the best performance by SBERT-paraphrase, which was not trained with any STS dataset.
   Instead, it was trained on a large and broad paraphrase corpus, mainly derived from Wikipedia, which generalizes well
   to various topics."
     1. `sentence-transformers/distilroberta-base-paraphrase-v1`
@@ -71,19 +67,16 @@
     1. `sentence-transformers/distilbert-base-nli-stsb-quora-ranking`
     1. `distilbert-base-nli-mean-tokens`
 - As a result of our hyperparameter tuning for model selection, `sentence-transformers/distilroberta-base-paraphrase-v1`
-  indeed
-  topped our list, and hence, the further hyperparameter tuning was done using the same model.
+  indeed topped our list, and hence, the further hyperparameter tuning was done using the same model.
 - The key implementation I used for topic modeling is from offered by Grootendorst et. al. [1] - BERTopic. The framework
-  offers the best of all the worlds
-  by combining SBERT embeddings, whose dimensionality is then reduced by using UMAP or any other supported
-  Dimensionality Reduction technique. The HDBSCAN algorithm
-  then creates hierarchical clusters, where for each cluster, all documents within the same cluster are rather treated
-  as a single document for further c-tf-idf vectorization.
+  offers the best of all the worlds by combining SBERT embeddings, whose dimensionality is then reduced by using UMAP or
+  any other supported Dimensionality Reduction technique. The HDBSCAN algorithm then creates hierarchical clusters,
+  where for each cluster, all documents within the same cluster are rather treated as a single document for further
+  c-tf-idf vectorization.
 - The framework not only allows us to use any swappable components (Embedding model, Dimensionality Reduction,
-  Clustering and Topic Reduction) but it also offers
-  some tools for interpreting and visualizing topics. Hence, in our study, I chose to test this framework with
-  combinations of appropriate hyperparameters
-  selected based on dataset EDA and knowledge referenced from other cited sources.
+  Clustering and Topic Reduction) but it also offers some tools for interpreting and visualizing topics. Hence, in our
+  study, I chose to test this framework with combinations of appropriate hyperparameters selected based on dataset EDA
+  and knowledge referenced from other cited sources.
 - In this study, I use BERTopic Framework for creating topic model for classifying abstracts into unknown number of
   topics.
 - Further, the original dataset provides list of category associations for each document. So I trained Multi Label
@@ -112,29 +105,24 @@
         - Although, in initial experiment, the downstream model I ended up using
           is `sentence-transformers/distilroberta-base-paraphrase-v1`.
         - And since `RoBERTa` model rather uses `<sep>` as a separator token, and my preprocessed data still
-          contains `[SEP]` tokens, `sep` is going
-          to exist across all the documents as a noise.
+          contains `[SEP]` tokens, `sep` is going to exist across all the documents as a noise.
         - Hence, there's a risk of having a lot of similarity across all the documents just because of this mistake.
         - **[TODO for myself]** I'll fix this in coming iterations. I'm just choosing to continue as is because I have
-          already
-          generated data splits, and corresponding document embeddings for abstracts.
-          and I don't want to spend anymore time re-doing all that in initial iteration.
+          already generated data splits, and corresponding document embeddings for abstracts. and I don't want to spend
+          anymore time re-doing all that in initial iteration.
 
-- Because I have chosen to work with BERTopic, which, after extracting
-  embeddings from transformer models, the only place where original text is then used is in c-tfidf model.
-  Since, c-tfidf model still uses traditional CountVectorizer and TF-IDF Transformer on top of it, where contextual word
-  embeddings from
-  transformer model aren't used to compute similarities. And hence, it's necessary to perform lemmatization on all
-  documents, so that words with similar base lexical meaning aren't treated differently.
-  In this implementation, I only performed offline lemmatization and ensure they are used only after the for c-tf-idf
-  step, while the transformer embeddings are generated
-  using the full abstract text with basic cleaning as covered in previous step.
+- Because I have chosen to work with BERTopic, which, after extracting embeddings from transformer models, the only
+  place where original text is then used is in c-tfidf model. Since, c-tfidf model still uses traditional
+  CountVectorizer and TF-IDF Transformer on top of it, where contextual word embeddings from transformer model aren't
+  used to compute similarities. And hence, it's necessary to perform lemmatization on all documents, so that words with
+  similar base lexical meaning aren't treated differently. In this implementation, I only performed offline
+  lemmatization and ensure they are used only after the for c-tf-idf step, while the transformer embeddings are
+  generated using the full abstract text with basic cleaning as covered in previous step.
 
 - The WordPiece tokenizer of BERT would still make sure to assign appropriate token to almost every possible token in
-  the
-  corpus, therefore, there might is no need for us to handle OOV words explicitly. Except, where I started seeing some
-  irrelevant words / symbols
-  making up the part of the topic labels. Then I can consider removing such symbols / tokens.
+  the corpus, therefore, there might is no need for us to handle OOV words explicitly. Except, where I started seeing
+  some irrelevant words / symbols making up the part of the topic labels. Then I can consider removing such symbols /
+  tokens.
 
 ## EDA and Creating Train, Validation, Test splits
 
@@ -145,29 +133,34 @@
 - In EDA as I explored the labels in tree hierarchy fashion. We can see that `physics.atom-ph` is associated
   across many different top level labels such as - `nucl-th`, `nucl-ex`, `hep-lat`. Or even labels at the parent level
   to `physics.atom-ph` don't follow consistent hierarchy either. Which does offers me insights that hierarchical topic /
-  label
-  association seems alright, but may not be the best / complete solution to the problem at hand.
+  label association seems alright, but may not be the best / complete solution to the problem at hand.
   ![eda_labels_hierarchy_overlaps.png](resources/eda_labels_hierarchy_overlaps.png)
 
 #### Top Level Unique Categories
+
 - Among 176 unique categories, I saw naming pattern.
 - These are some of the examples from 176 unique categories - 'quant-ph', 'physics.flu-dyn', 'acc-phys', 'ao-sci', '
   math.KT', 'cs.CE', 'q-fin.PM', 'cs.CV', 'cs.MS', 'math.GM'
 - As per the [Arxiv Category Taxonomies](https://arxiv.org/category_taxonomy), even
-  though `cs.CE`, `cs.CV`, `cs.MS`, belong to `Computational Engineering`, `Computer Vision`, and `Mathematical Software`
+  though `cs.CE`, `cs.CV`, `cs.MS`, belong to `Computational Engineering`, `Computer Vision`,
+  and `Mathematical Software`
   respectively, they still fall under `cs` - `Computer Science` as their major category.
-- And hence, in order to go towards the broader level of categories, I split the names by any symbols, and took first word,
-  to land at 31 unique broader level categories, or 32 if I rather add `q-bio`, and `q-fin` separately, and remove `q`.
-  - Although, issue with this is e.g. if we consider `quant` as top level category, here are two examples where
-  `quant` appears at the beginning of one - `quant-ph`, and in the middle of the other one `cond-mat.quant-gas`.
-- Going through [Arxiv's Online Taxonomies](https://arxiv.org/category_taxonomy) 2nd broad level categories, there are about
-  13 or such 2nd level categories. Although, they don't have everything covered in their taxonomy.
-- Some examples of missing categories from [Arxiv'x Online Taxonomies](https://arxiv.org/category_taxonomy) are `patt`, `solv`, `adap`, `funct`, `bayes` etc.
-- So overall this study suggests that the range between 7 and 30 categories as a broad level categories exploration exercise makes sense.
-- Although, if we want to dive into concept level details, we need to go higher in range for finding the optimal number of topics,
-  hence, I tried ranges all the way up to 1500 and beyond in my experiments.
+- And hence, in order to go towards the broader level of categories, I split the names by any symbols, and took first
+  word, to land at 31 unique broader level categories, or 32 if I rather add `q-bio`, and `q-fin` separately, and
+  remove `q`.
+    - Although, issue with this is e.g. if we consider `quant` as top level category, here are two examples where
+      `quant` appears at the beginning of one - `quant-ph`, and in the middle of the other one `cond-mat.quant-gas`.
+- Going through [Arxiv Online Taxonomies](https://arxiv.org/category_taxonomy) 2nd broad level categories, there are
+  about 13 or such 2nd level categories. Although, they don't have everything covered in their taxonomy.
+- Some examples of missing categories from [Arxiv Online Taxonomies](https://arxiv.org/category_taxonomy)
+  are `patt`, `solv`, `adap`, `funct`, `bayes` etc.
+- So overall this study suggests that the range between 7 and 30 categories as a broad level categories exploration
+  exercise makes sense.
+- Although, if we want to dive into concept level details, we need to go higher in range for finding the optimal number
+  of topics, hence, I tried ranges all the way up to 1500 and beyond in my experiments.
 
 #### Text Lengths and Assumptions for Outliers
+
 - Outlier articles are 22 where the way they were treated as was based on the word count for their abstracts > 500
   words (this is before tokenization).
     - Pretrained BERT model was only trained on 512 tokens for single sequence
@@ -187,8 +180,7 @@
 ### Creating Datasets for Training, Validation, and Testing Purposes
 
 - As I found 176 unique categories, selecting some samples from each category was one of the straight forward ways to
-  ensure
-  stratification across all categories for all splits - train, validation, and test.
+  ensure stratification across all categories for all splits - train, validation, and test.
 - The following steps state scripts, and configurations used to create 5 datasets.
 - The dataset 5 was especially created for rapid initial experimentation with each step containing only 5% of the whole
   data.

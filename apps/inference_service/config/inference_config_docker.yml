@@ -1,0 +1,19 @@
+logging_dir: "/logs"
+logfile_name: "inference_app_logs.txt"
+logging_level: "DEBUG"
+
+app_host: "localhost"
+app_port: 5000
+
+dataset_path: "/dataset"
+models_path: "/models"
+
+# model settings
+transformer_model_name: 'sentence-transformers/distilroberta-base-paraphrase-v1'
+classifier_study_name: "classifier_dataset4_study1"
+topic_modeling_study_name: "distilled_model_selection_sample_dataset5_3"
+label_transformer_filename: "multilabel_binarizer.pkl"
+
+classifier_threshold: 0.1
+num_classes: 176
+input_size: 768

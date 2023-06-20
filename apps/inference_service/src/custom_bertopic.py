@@ -47,6 +47,8 @@ class CustomBERTopic(BERTopic):
                       y: Union[List[int], np.ndarray] = None) -> Tuple[List[int],
     Union[np.ndarray, None]]:
         """ Overriding parent class method
+        Mainly done for the purpose of having control over deleting resources not used after certain steps.
+        Hence, reducing the RAM and GPU memory footprint.
         """
         self.logger.debug(f"Calling overriden fit_transform method")
         if documents is not None:

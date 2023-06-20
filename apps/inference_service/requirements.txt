@@ -1,0 +1,6 @@
+scikit-learn
+sentence-transformers
+# bertopic==0.15.0
+torch
+flask
+PyYAML
